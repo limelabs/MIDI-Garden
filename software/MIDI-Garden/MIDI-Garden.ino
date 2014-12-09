@@ -3633,14 +3633,14 @@ void selectOutput(){
   tft.setTextColor(BLACK);
   tft.setTextSize(2);
   tft.setCursor(25, 282);
-  tft.print("CV OUT");
+  tft.print(F("CV OUT"));
   tft.setTextColor(LTGRAY);
   tft.drawRect(123, 264, 115, 48, LTGRAY);
   tft.setCursor(127, 282);
-  tft.print("CANCEL");
+  tft.print(F("CANCEL"));
   tft.drawRect(242, 264, 234, 48, LTGRAY);
   tft.setCursor(364, 291);
-  tft.print("LIVE MODE");
+  tft.print(F("LIVE MODE"));
 
   // TOUCH SCREEN LOOP
   while(inSetupMode == true){
@@ -3975,49 +3975,49 @@ void selectCvOutPage(){
   tft.setCursor(52, 16); // text for button 1
   tft.setTextColor(LTGRAY);
   tft.setTextSize(3);
-  tft.print("Patch ");
+  tft.print(F("Patch "));
   if(userFriendlyPatchNumber < 10) tft.print("0");
   tft.print(userFriendlyPatchNumber);
-  tft.print(" Output");
+  tft.print(F(" Output"));
   tft.fillRect(4, 56, 234, 48, currentColor);
   tft.setTextColor(BLACK);
   tft.setTextSize(2);
   tft.setCursor(8, 72);
-  tft.print("CV0");
+  tft.print(F("CV0"));
   tft.fillRect(4, 108, 234, 48, currentColor);
   tft.setCursor(8, 124);
-  tft.print("CV1");
+  tft.print(F("CV1"));
   tft.fillRect(4, 160, 234, 48, currentColor);
   tft.setCursor(8, 176);
-  tft.print("CV2");
+  tft.print(F("CV2"));
   tft.fillRect(4, 212, 234, 48, currentColor);
   tft.setCursor(8, 228);
-  tft.print("CV3");
+  tft.print(F("CV3"));
   tft.fillRect(242, 56, 234, 48, currentColor);
   tft.setCursor(246, 72);
-  tft.print("CV4");
+  tft.print(F("CV4"));
   tft.fillRect(242, 108, 234, 48, currentColor);
   tft.setCursor(246, 124);
-  tft.print("CV5");
+  tft.print(F("CV5"));
   tft.fillRect(242, 160, 234, 48, currentColor);
   tft.setCursor(246, 176);
-  tft.print("CV6");
+  tft.print(F("CV6"));
   tft.fillRect(242, 212, 234, 48, currentColor);
   tft.setCursor(246, 228);
-  tft.print("CV7");
+  tft.print(F("CV7"));
 
   // build Bottom Menu Buttons
   tft.drawRect(4, 264, 115, 48, LTGRAY);
   tft.setTextColor(LTGRAY);
   tft.setTextSize(2);
   tft.setCursor(50, 282);
-  tft.print("SETUP");
+  tft.print(F("SETUP"));
   tft.drawRect(123, 264, 115, 48, LTGRAY);
   tft.setCursor(127, 282);
-  tft.print("CANCEL");
+  tft.print(F("CANCEL"));
   tft.drawRect(242, 264, 234, 48, LTGRAY);
   tft.setCursor(364, 291);
-  tft.print("LIVE MODE");
+  tft.print(F("LIVE MODE"));
 
   // TOUCH SCREEN LOOP
   while(inSetupMode == true){
@@ -4279,40 +4279,40 @@ void selectCommandPage(){
   tft.setCursor(52, 16); // text for button 1
   tft.setTextColor(LTGRAY);
   tft.setTextSize(3);
-  tft.print("Patch ");
+  tft.print(F("Patch "));
   if(userFriendlyPatchNumber < 10) tft.print("0");
   tft.print(userFriendlyPatchNumber);
-  tft.print(" Command Type");
+  tft.print(F(" Command Type"));
   tft.fillRect(4, 56, 234, 48, currentColor);
   tft.setTextColor(BLACK);
   tft.setTextSize(2);
   tft.setCursor(8, 72);
-  tft.print("CC");
+  tft.print(F("CC"));
   tft.fillRect(4, 108, 234, 48, currentColor);
   tft.setCursor(8, 124);
-  tft.print("NRPN 14bit");
+  tft.print(F("NRPN 14bit"));
   tft.fillRect(4, 160, 234, 48, currentColor);
   tft.setCursor(8, 176);
-  tft.print("NRPN 7bit");
+  tft.print(F("NRPN 7bit"));
   tft.fillRect(4, 212, 234, 48, currentColor);
   tft.setCursor(8, 228);
-  tft.print("RPN 14bit");
+  tft.print(F("RPN 14bit"));
   tft.fillRect(242, 56, 234, 48, currentColor);
   tft.setCursor(246, 72);
-  tft.print("CC 14bit");
+  tft.print(F("CC 14bit"));
 
   // build Bottom Menu Buttons
   tft.drawRect(4, 264, 115, 48, LTGRAY);
   tft.setTextColor(LTGRAY);
   tft.setTextSize(2);
   tft.setCursor(50, 282);
-  tft.print("SETUP");
+  tft.print(F("SETUP"));
   tft.drawRect(123, 264, 115, 48, LTGRAY);
   tft.setCursor(127, 282);
-  tft.print("CANCEL");
+  tft.print(F("CANCEL"));
   tft.drawRect(242, 264, 234, 48, LTGRAY);
   tft.setCursor(364, 291);
-  tft.print("LIVE MODE");
+  tft.print(F("LIVE MODE"));
 
   // TOUCH SCREEN LOOP
   while(inSetupMode == true){
@@ -4411,17 +4411,17 @@ void setOutputRangePage() {
   tft.setCursor(55, 16);
   tft.setTextColor(LTGRAY);
   tft.setTextSize(3);
-  tft.print("Patch ");
+  tft.print(F("Patch "));
   if(userFriendlyPatchNumber < 10) tft.print("0");
   tft.print(userFriendlyPatchNumber);
-  tft.print(" Output Range");
+  tft.print(F(" Output Range"));
 
   tft.drawRect(4, 56, 234, 100, currentColor);
   tft.fillRect(110, 56, 128, 22, currentColor);
   tft.setTextColor(BLACK);
   tft.setTextSize(2);
   tft.setCursor(114, 60);
-  tft.print("Min. Value");
+  tft.print(F("Min. Value"));
   tft.setTextColor(WHITE);
   tft.setTextSize(3);
   tft.setCursor(10, 100);
@@ -4432,7 +4432,7 @@ void setOutputRangePage() {
   tft.setTextColor(BLACK);
   tft.setTextSize(2);
   tft.setCursor(114, 164);
-  tft.print("Max. Value");
+  tft.print(F("Max. Value"));
   tft.setTextColor(WHITE);
   tft.setTextSize(3);
   tft.setCursor(10, 204);
@@ -4442,41 +4442,41 @@ void setOutputRangePage() {
   tft.setTextColor(currentColor);
   tft.setTextSize(2);
   tft.setCursor(246, 60);
-  tft.print("<<<<<<<<<<<<<<<<<<<");
+  tft.print(F("<<<<<<<<<<<<<<<<<<<"));
   tft.setCursor(246, 78);
-  tft.print("Set output value");
+  tft.print(F("Set output value"));
   tft.setCursor(246, 96);
-  tft.print("range for Patch");
+  tft.print(F("range for Patch"));
   if(userFriendlyPatchNumber < 10) tft.print("0");
   tft.print(userFriendlyPatchNumber);
   tft.setCursor(246, 114);
-  tft.print("here.");
+  tft.print(F("here."));
 
   tft.setCursor(246, 150);
-  tft.print("If you want the");
+  tft.print(F("If you want the"));
   tft.setCursor(246, 168);
-  tft.print("highest possible");
+  tft.print(F("highest possible"));
   tft.setCursor(246, 186);
-  tft.print("value sent by this");
+  tft.print(F("value sent by this"));
   tft.setCursor(246, 204);
-  tft.print("patch to be 96, enter");
+  tft.print(F("patch to be 96, enter"));
   tft.setCursor(246, 222);
-  tft.print("96 at 'Max. Value'.");
+  tft.print(F("96 at 'Max. Value'."));
   tft.setCursor(246, 240);
-  tft.print("<<<<<<<<<<<<<<<<<<<");
+  tft.print(F("<<<<<<<<<<<<<<<<<<<"));
 
   // build Bottom Menu Buttons
   tft.drawRect(4, 264, 115, 48, LTGRAY);
   tft.setTextColor(LTGRAY);
   tft.setTextSize(2);
   tft.setCursor(50, 282);
-  tft.print("SETUP");
+  tft.print(F("SETUP"));
   tft.drawRect(123, 264, 115, 48, LTGRAY);
   tft.setCursor(127, 282);
-  tft.print("CANCEL");
+  tft.print(F("CANCEL"));
   tft.drawRect(242, 264, 234, 48, LTGRAY);
   tft.setCursor(364, 291);
-  tft.print("LIVE MODE");
+  tft.print(F("LIVE MODE"));
 
   // TOUCH SCREEN LOOP
   while(inSetupMode == true){
@@ -4547,16 +4547,16 @@ void setInputRange() {
   tft.setCursor(68, 16);
   tft.setTextColor(LTGRAY);
   tft.setTextSize(3);
-  tft.print("Patch ");
+  tft.print(F("Patch "));
   tft.print(currentPatch);
-  tft.print(" Input Range");
+  tft.print(F(" Input Range"));
 
   tft.drawRect(4, 56, 234, 100, currentColor);
   tft.fillRect(110, 56, 128, 22, currentColor);
   tft.setTextColor(BLACK);
   tft.setTextSize(2);
   tft.setCursor(114, 60);
-  tft.print("Min. Value");
+  tft.print(F("Min. Value"));
   tft.setTextColor(WHITE);
   tft.setTextSize(3);
   tft.setCursor(10, 100);
@@ -4567,7 +4567,7 @@ void setInputRange() {
   tft.setTextColor(BLACK);
   tft.setTextSize(2);
   tft.setCursor(114, 164);
-  tft.print("Max. Value");
+  tft.print(F("Max. Value"));
   tft.setTextColor(WHITE);
   tft.setTextSize(3);
   tft.setCursor(10, 204);
@@ -4577,41 +4577,41 @@ void setInputRange() {
   tft.setTextColor(currentColor);
   tft.setTextSize(2);
   tft.setCursor(246, 60);
-  tft.print("<<<<<<<<<<<<<<<<<<<");
+  tft.print(F("<<<<<<<<<<<<<<<<<<<"));
   tft.setCursor(246, 78);
-  tft.print("Please enter values");
+  tft.print(F("Please enter values"));
   tft.setCursor(246, 96);
-  tft.print("between 0 and 1023.");
+  tft.print(F("between 0 and 1023."));
   
   tft.setCursor(246, 132);
-  tft.print("Make shure not to.");
+  tft.print(F("Make shure not to."));
   tft.setCursor(246, 150);
-  tft.print("enter two identical");
+  tft.print(F("enter two identical"));
   tft.setCursor(246, 168);
-  tft.print("values.");
+  tft.print(F("values."));
   tft.setCursor(246, 186);
-  tft.print("For Input Range");
+  tft.print(F("For Input Range"));
   tft.setCursor(246, 204);
-  tft.print("Min. Value may");
+  tft.print(F("Min. Value may"));
   tft.setCursor(246, 222);
-  tft.print("exceed Max. Value.");
+  tft.print(F("exceed Max. Value."));
   tft.setCursor(246, 240);
-  tft.print("<<<<<<<<<<<<<<<<<<<");
+  tft.print(F("<<<<<<<<<<<<<<<<<<<"));
 
   // build Bottom Menu Buttons
   tft.drawRect(4, 264, 115, 48, LTGRAY);
   tft.setTextColor(LTGRAY);
   tft.setTextSize(2);
   tft.setCursor(50, 282);
-  tft.print("SETUP");
+  tft.print(F("SETUP"));
   tft.drawRect(123, 264, 115, 48, LTGRAY);
   tft.setCursor(127, 282);
-  tft.print("BACK");
+  tft.print(F("BACK"));
   tft.drawRect(242, 264, 234, 48, LTGRAY);
   tft.setCursor(386, 270);
-  tft.print("EXIT TO");
+  tft.print(F("EXIT TO"));
   tft.setCursor(364, 291);
-  tft.print("LIVE MODE");
+  tft.print(F("LIVE MODE"));
 
   // TOUCH SCREEN LOOP
   while(inSetupMode == true){
@@ -5512,13 +5512,13 @@ void keyPadEntry() {
   tft.setCursor(65, 16);
   tft.setTextColor(LTGRAY);
   tft.setTextSize(3);  
-  tft.print("Patch ");
+  tft.print(F("Patch "));
   if(userFriendlyPatchNumber < 10) tft.print("0");
   tft.print(userFriendlyPatchNumber);
-  if(currentValueIdentifier == 1 || currentValueIdentifier == 2) tft.print(" Output Range");
-  else if(currentValueIdentifier == 5 && commandIdentifier[currentPatch] == 1) tft.print(" CC#");
-  else if(currentValueIdentifier == 5 && commandIdentifier[currentPatch] == 2) tft.print(" MSB#");
-  else if(currentValueIdentifier == 6) tft.print(" LSB#");
+  if(currentValueIdentifier == 1 || currentValueIdentifier == 2) tft.print(F(" Output Range"));
+  else if(currentValueIdentifier == 5 && commandIdentifier[currentPatch] == 1) tft.print(F(" CC#"));
+  else if(currentValueIdentifier == 5 && commandIdentifier[currentPatch] == 2) tft.print(F(" MSB#"));
+  else if(currentValueIdentifier == 6) tft.print(F(" LSB#"));
   tft.setTextColor(BLACK);
   buildValueWindow();
   buildKeyPad();
@@ -5591,43 +5591,43 @@ void buildValueWindow() {
   tft.setTextSize(2);
   tft.setCursor(114, 60);
   if(currentValueIdentifier == 1) {
-    tft.print("Min. Value");
+    tft.print(F("Min. Value"));
     tft.setTextColor(GRAY);
     tft.setTextSize(3);
     tft.setCursor(10, 100);
     tft.print(minOutValue[currentPatch]);
   } 
   else if(currentValueIdentifier == 2) {
-    tft.print("Max. Value");
+    tft.print(F("Max. Value"));
     tft.setTextColor(GRAY);
     tft.setTextSize(3);
     tft.setCursor(10, 100);
     tft.print(maxOutValue[currentPatch]);
   } 
   else if(currentValueIdentifier == 3) {
-    tft.print("Min. Value");
+    tft.print(F("Min. Value"));
     tft.setTextColor(GRAY);
     tft.setTextSize(3);
     tft.setCursor(10, 100);
     tft.print(minInValue[currentPatch]);
   } 
   else if(currentValueIdentifier == 4) {
-    tft.print("Max. Value");
+    tft.print(F("Max. Value"));
     tft.setTextColor(GRAY);
     tft.setTextSize(3);
     tft.setCursor(10, 100);
     tft.print(maxInValue[currentPatch]);
   } 
   else if(currentValueIdentifier == 5) {
-    if(commandIdentifier[currentPatch] == 1) tft.print("CC#");
-    else if(commandIdentifier[currentPatch] == 2 || commandIdentifier[currentPatch] == 3) tft.print("MSB#");
+    if(commandIdentifier[currentPatch] == 1) tft.print(F("CC#"));
+    else if(commandIdentifier[currentPatch] == 2 || commandIdentifier[currentPatch] == 3) tft.print(F("MSB#"));
     tft.setTextColor(GRAY);
     tft.setTextSize(3);
     tft.setCursor(10, 100);
     tft.print(ctrlrNrA[currentPatch]);
   } 
   else if(currentValueIdentifier == 6) {
-    tft.print("LSB");
+    tft.print(F("LSB"));
     tft.setTextColor(GRAY);
     tft.setTextSize(3);
     tft.setCursor(10, 100);
@@ -5702,7 +5702,7 @@ void buildKeyPad() {
   tft.setTextSize(3);
   tft.setTextColor(BLACK);
   tft.setCursor(258, 225);
-  tft.print("DEL");
+  tft.print(F("DEL"));
   tft.fillRect(323, 210, 72, 46, currentColor);
   tft.setTextSize(3);
   tft.setTextColor(BLACK);
@@ -5712,22 +5712,22 @@ void buildKeyPad() {
   tft.setTextSize(3);
   tft.setTextColor(BLACK);
   tft.setCursor(418, 225);
-  tft.print("OK");
+  tft.print(F("OK"));
 
   // build Bottom Menu Buttons
   tft.drawRect(4, 264, 115, 48, LTGRAY);
   tft.setTextColor(LTGRAY);
   tft.setTextSize(2);
   tft.setCursor(50, 282);
-  tft.print("SETUP");
+  tft.print(F("SETUP"));
   tft.drawRect(123, 264, 115, 48, LTGRAY);
   tft.setCursor(127, 270);
-  tft.print("LOAD/SAVE");
+  tft.print(F("LOAD/SAVE"));
   tft.setCursor(127, 291);
-  tft.print("PROGRAM");
+  tft.print(F("PROGRAM"));
   tft.drawRect(242, 264, 234, 48, LTGRAY);
   tft.setCursor(364, 291);
-  tft.print("LIVE MODE");
+  tft.print(F("LIVE MODE"));
 }
 
 //====================================================================================
@@ -5842,7 +5842,7 @@ void keyboardEntryLoop() {
   tft.setTextColor(currentColor);
   tft.setTextSize(3);  
   if(currentTextIdentifier == 1) {
-    tft.print("Rename Patch ");
+    tft.print(F("Rename Patch "));
     if(userFriendlyPatchNumber < 10) tft.print("0");
     tft.print(userFriendlyPatchNumber);
     
@@ -5851,7 +5851,7 @@ void keyboardEntryLoop() {
     tft.print(patchNames[currentPatch]);
   }
   else if(currentTextIdentifier == 2) {
-    tft.print("Enter Preset Name");
+    tft.print(F("Enter Preset Name"));
     
     tft.setTextColor(GRAY);
     tft.setCursor(10, 45);
@@ -5992,11 +5992,11 @@ void buildKeyboard() {
   tft.drawRect(1, 273, 118, 46, currentColor);
   tft.setTextColor(currentColor);
   tft.setCursor(7, 285);
-  tft.print("CANCEL");
+  tft.print(F("CANCEL"));
   tft.fillRect(121, 273, 238, 46, currentColor);
   tft.drawRect(361, 273, 118, 46, currentColor);
   tft.setCursor(377, 285);
-  tft.print("ENTER");
+  tft.print(F("ENTER"));
   
   if(uppercase == true) {
     tft.setTextColor(BLACK);
