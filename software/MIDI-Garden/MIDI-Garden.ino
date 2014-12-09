@@ -10,7 +10,7 @@
 // This program is distributed WITHOUT ANY WARRANTY OF ANY KIND, INCLUDING
 // BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
 // PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHOR
-// OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+// OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER  LIABILITY,
 // WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF
 // OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
@@ -23,7 +23,7 @@
 // all copies or substantial portions of the Software.
 //
 // This Arduino sketch is the software for the Lime Labs MIDI Garden. 
-// Version 0.7.0
+// Version 0.7.1
 // Please visit http://www.limelabs.eu/midi-garden for details on the awesome
 // device this program has been written for. 
 
@@ -201,9 +201,9 @@ boolean isMidiOut2[10] = {false, false, false, false, false, false, false, false
 boolean isMidiOut3[10] = {false, false, false, false, false, false, false, false, false, false};
 uint8_t commandIdentifier[10] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
 uint8_t midiChan[10] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
-uint8_t firstDataByte[10] = {30, 21, 9, 1, 1, 17, 16, 15, 33, 0};
-uint8_t firstDataByteB[10] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-int16_t secondDataByte[10] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+uint8_t ctrlrNrA[10] = {30, 21, 9, 1, 1, 17, 16, 15, 33, 0};
+uint8_t ctrlrNrB[10] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+int16_t patchValue[10] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 float dmpMinInValue[10] = {-1.3, -1.3, -3.1416, 0, 0, 0, 0, 0, 0, 0};
 float dmpMaxInValue[10] = {1.3, 1.3, 3.1416, 0, 0, 0, 0, 0, 0, 0};
 uint16_t minInValue[10] = {0, 0, 0, 0, 0, 0, 0, 50, 0, 0};
@@ -310,16 +310,15 @@ void setup(void) {
   tft.setRotation(1);
   tft.fillScreen(BLACK);
   
-  // Set the SPI frequency to 1 MHz (on 16 MHz Arduinos), to be safe.
-  // DIV2 = 8 MHz works for me, though, even on a breadboard.
-  dac.setSPIDivider(SPI_CLOCK_DIV2);
-  dac.setPortWrite(false);
+  dac.setSPIDivider(SPI_CLOCK_DIV2); // set 8MHz clock for the DACs SPI interface
+  dac.setPortWrite(false); // disable port write (necessary for accessing multiple CS pins)
   
+  // check for SD card
   if (!SD.begin(SD_CS)) {
     tft.setTextSize(2);
     tft.setTextColor(RED);
     tft.setCursor(120, 8);
-    tft.print("SD Card initialization failed!");
+    tft.print(F("No SD Card found!"));
     Serial.println(F("SD Card initialization failed!"));
     return;
   }
@@ -354,7 +353,7 @@ void loop() {
     mpu.setDMPEnabled(true); // turn on the DMP, now that it's ready
     attachInterrupt(0, dmpDataReady, RISING); // enable Arduino interrupt detection
     mpuIntStatus = mpu.getIntStatus();
-    dmpReady = true; // set DMP Ready flag so the main loop() function knows it's ok to use it
+    dmpReady = true; // set DMP Ready flag so the other functions know it's ok to use it
     packetSize = mpu.dmpGetFIFOPacketSize(); // get expected DMP packet size for later comparison
   } 
   
@@ -363,31 +362,31 @@ void loop() {
   tft.setTextSize(2);
   tft.setTextColor(LIME);
   tft.setCursor(380, 62);
-  tft.print("OS 0.7.0");
+  tft.print(F("OS 0.7.1"));
   bmpDraw("limelabs.bmp", 289, 248);
   tft.setCursor(295, 300);
-  tft.print("www.limelabs.eu");
+  tft.print(F("www.limelabs.eu"));
   
   // print buttons
   tft.setTextColor(BLACK);
   tft.fillRect(0, 0, 78, 77, LIME);
   tft.setCursor(10, 18);
-  tft.print("BLANK");
+  tft.print(F("BLANK"));
   tft.setCursor(4, 40);
-  tft.print("PRESET");
+  tft.print(F("PRESET"));
   tft.fillRect(0, 81, 78, 77, LIME);
   tft.setCursor(16, 99);
-  tft.print("LOAD");
+  tft.print(F("LOAD"));
   tft.setCursor(4, 121);
-  tft.print("PRESET");
+  tft.print(F("PRESET"));
   tft.fillRect(0, 162, 78, 77, LIME);
   tft.setCursor(4, 180);
-  tft.print("SYSTEM");
+  tft.print(F("SYSTEM"));
   tft.setCursor(10, 202);
-  tft.print("SETUP");
+  tft.print(F("SETUP"));
   tft.fillRect(0, 243, 78, 77, LIME);
   tft.setCursor(10, 272);
-  tft.print("ABOUT");
+  tft.print(F("ABOUT"));
   
   // touchscreen loop
   while ( inSetupMode == true ) {
@@ -449,10 +448,10 @@ void liveModeA() {
   while(isLive == true) { 
     touchscreenLiveMode(); 
     
-    readAnalogIns(); 
+    processAnalogSensors(); 
 
     if(isDmp[0] == true || isDmp[1] == true || isDmp[2] == true || isDmp[3] == true || isDmp[4] == true || isDmp[5] == true || isDmp[6] == true || isDmp[7] == true || isDmp[8] == true || isDmp[9] == true) {
-      calculateMotionSendValues(); 
+      processDigitalSensors(); 
     }
     
     drawLiveValuesA();
@@ -474,10 +473,10 @@ void liveModeB() {
   while(isLive == true) {
     touchscreenLiveModeB(); 
     
-    readAnalogIns(); 
+    processAnalogSensors(); 
 
     if(isDmp[0] == true || isDmp[1] == true || isDmp[2] == true || isDmp[3] == true || isDmp[4] == true || isDmp[5] == true || isDmp[6] == true || isDmp[7] == true || isDmp[8] == true || isDmp[9] == true) {
-      calculateMotionSendValues(); 
+      processDigitalSensors(); 
     }
     
     drawLiveValuesB();
@@ -500,10 +499,10 @@ void liveModeC() {
   while(isLive == true) {
     touchscreenLiveModeC(); 
     
-    readAnalogIns(); 
+    processAnalogSensors(); 
 
     if(isDmp[0] == true || isDmp[1] == true || isDmp[2] == true || isDmp[3] == true || isDmp[4] == true || isDmp[5] == true || isDmp[6] == true || isDmp[7] == true || isDmp[8] == true || isDmp[9] == true) {
-      calculateMotionSendValues(); 
+      processDigitalSensors(); 
     }
     
     drawLiveValuesC();
@@ -521,17 +520,38 @@ void liveModeC() {
 void patchSetup(int currentPatch){
   boolean inSetupMode = true;
   char arrowDown = 25;
-
-  if(currentPatch == 0){ currentColor = COLOR1; } 
-  else if (currentPatch == 1){ currentColor = COLOR2; } 
-  else if (currentPatch == 2){ currentColor = COLOR3; } 
-  else if (currentPatch == 3){ currentColor = COLOR4; } 
-  else if (currentPatch == 4){ currentColor = COLOR5; } 
-  else if (currentPatch == 5){ currentColor = COLOR6; } 
-  else if (currentPatch == 6){ currentColor = COLOR7; } 
-  else if (currentPatch == 7){ currentColor = COLOR8; } 
-  else if (currentPatch == 8){ currentColor = COLOR9; } 
-  else if (currentPatch == 9){ currentColor = COLOR0; }
+  switch (currentPatch) {
+       case 0:
+         currentColor = COLOR1;
+         break;
+       case 1:
+         currentColor = COLOR2;
+         break;
+       case 2:
+         currentColor = COLOR3;
+         break;
+       case 3:
+         currentColor = COLOR4;
+         break;
+       case 4:
+         currentColor = COLOR5;
+         break;
+       case 5:
+         currentColor = COLOR6;
+         break;
+       case 6:
+         currentColor = COLOR7;
+         break;
+       case 7:
+         currentColor = COLOR8;
+         break;
+       case 8:
+         currentColor = COLOR9;
+         break;
+       case 9:
+         currentColor = COLOR0;
+         break;
+  }
 
   userFriendlyPatchNumber = currentPatch + 1;
 
@@ -716,34 +736,34 @@ void patchSetup(int currentPatch){
           case 2:
             tft.print("NRPN");
             tft.setCursor(418, 226);
-            for(int x = countDigits(firstDataByteB[currentPatch]); x < 3; x++) {
+            for(int x = countDigits(ctrlrNrB[currentPatch]); x < 3; x++) {
               tft.print("0");
             }
-            tft.print(firstDataByteB[currentPatch]);
+            tft.print(ctrlrNrB[currentPatch]);
             break;
           case 3:
             tft.print(" RPN");
             tft.setCursor(418, 226);
-            for(int x = countDigits(firstDataByteB[currentPatch]); x < 3; x++) {
+            for(int x = countDigits(ctrlrNrB[currentPatch]); x < 3; x++) {
               tft.print("0");
             }
-            tft.print(firstDataByteB[currentPatch]);
+            tft.print(ctrlrNrB[currentPatch]);
             break;
           case 4:
             tft.print("NR 7");
             tft.setCursor(418, 226);
-            for(int x = countDigits(firstDataByteB[currentPatch]); x < 3; x++) {
+            for(int x = countDigits(ctrlrNrB[currentPatch]); x < 3; x++) {
               tft.print("0");
             }
-            tft.print(firstDataByteB[currentPatch]);
+            tft.print(ctrlrNrB[currentPatch]);
             break;
           case 5:
             tft.print("CC14");
             tft.setCursor(418, 226);
-            for(int x = countDigits(firstDataByteB[currentPatch]); x < 3; x++) {
+            for(int x = countDigits(ctrlrNrB[currentPatch]); x < 3; x++) {
               tft.print("0");
             }
-            tft.print(firstDataByteB[currentPatch]);
+            tft.print(ctrlrNrB[currentPatch]);
             break;
           case 6:
             tft.print("  CV");
@@ -771,10 +791,10 @@ void patchSetup(int currentPatch){
             break;
     }
     tft.setCursor(418, 174);
-    for(int x = countDigits(firstDataByte[currentPatch]); x < 3; x++) {
+    for(int x = countDigits(ctrlrNrA[currentPatch]); x < 3; x++) {
       tft.print("0");
     }
-    tft.print(firstDataByte[currentPatch]);
+    tft.print(ctrlrNrA[currentPatch]);
   }
 
   // Bottom Menu Buttons
@@ -966,7 +986,7 @@ void systemSetup(){
   tft.setTextColor(LTGRAY);
   tft.setTextSize(3);
   tft.setCursor(126, 16);
-  tft.print("System Setup");
+  tft.print(F("System Setup"));
   tft.setTextSize(2);
   tft.setTextColor(BLACK);
   tft.fillRect(4, 56, 234, 100, LIME);
@@ -974,30 +994,30 @@ void systemSetup(){
   tft.print("- - - ");
   tft.fillRect(242, 56, 234, 100, LIME);
   tft.setCursor(246, 62);
-  tft.print("Select Live Mode");
+  tft.print(F("Select Live Mode"));
   tft.fillRect(4, 160, 234, 100, LIME);
   tft.setCursor(8, 164);
-  tft.print("Color Schemes");
+  tft.print(F("Color Schemes"));
   tft.fillRect(242, 160, 234, 100, LIME);
   tft.setCursor(246, 164);
-  tft.print("Calibrate MSU");
+  tft.print(F("Calibrate MSU"));
   
   // print Bottom Menu Buttons
   tft.drawRect(4, 264, 115, 48, LTGRAY);
   tft.setTextColor(LTGRAY);
   tft.setTextSize(2);
   tft.setCursor(50, 270);
-  tft.print("PATCH");
+  tft.print(F("PATCH"));
   tft.setCursor(50, 291);
-  tft.print("SETUP");
+  tft.print(F("SETUP"));
   tft.drawRect(123, 264, 115, 48, LTGRAY);
   tft.setCursor(127, 270);
-  tft.print("LOAD/SAVE");
+  tft.print(F("LOAD/SAVE"));
   tft.setCursor(127, 291);
-  tft.print("PROGRAM");
+  tft.print(F("PROGRAM"));
   tft.drawRect(242, 264, 234, 48, LTGRAY);
   tft.setCursor(364, 291);
-  tft.print("LIVE MODE");
+  tft.print(F("LIVE MODE"));
   
   // touchscreen loop
   while ( inSetupMode == true ) {
@@ -1073,21 +1093,21 @@ void selectLiveMode() {
   tft.setTextColor(LTGRAY);
   tft.setTextSize(3);
   tft.setCursor(126, 16);
-  tft.print("MIDI Garden - hello");
+  tft.print(F("Select Live Mode"));
   tft.setTextSize(2);
   tft.setTextColor(BLACK);
   tft.fillRect(4, 56, 234, 100, LIME);
   tft.setCursor(8, 62);
-  tft.print("Live A");
+  tft.print(F("Live A"));
   tft.fillRect(242, 56, 234, 100, LIME);
   tft.setCursor(246, 62);
-  tft.print("Live B");
+  tft.print(F("Live B"));
   tft.fillRect(4, 160, 234, 100, LIME);
   tft.setCursor(8, 164);
-  tft.print("Live C");
+  tft.print(F("Live C"));
   tft.fillRect(242, 160, 234, 100, LIME);
   tft.setCursor(246, 164);
-  tft.print("System Setup");
+  tft.print(F("System Setup"));
   
   // touch screen loop
   while ( inSetupMode == true ) {
@@ -1138,30 +1158,30 @@ void loadSave(){
   tft.setTextColor(LIME);
   tft.setTextSize(3);
   tft.setCursor(86, 16);
-  tft.print("Load/Save Program");
+  tft.print(F("Load/Save Program"));
   tft.setTextColor(BLACK);
   tft.setTextSize(2);
   tft.fillRect(4, 56, 234, 204, LIME);
   tft.setCursor(8, 62);
-  tft.print("LOAD");
+  tft.print(F("LOAD"));
   tft.fillRect(242, 56, 234, 204, LIME);
   tft.setCursor(246, 62);
-  tft.print("SAVE");
+  tft.print(F("SAVE"));
   
   // Bottom Menu Buttons
   tft.drawRect(4, 264, 115, 48, LTGRAY);
   tft.setTextColor(LTGRAY);
   tft.setTextSize(2);
   tft.setCursor(50, 282);
-  tft.print("SETUP");
+  tft.print(F("SETUP"));
   tft.drawRect(123, 264, 115, 48, LTGRAY);
   tft.setCursor(127, 270);
-  tft.print("LOAD/SAVE");
+  tft.print(F("LOAD/SAVE"));
   tft.setCursor(127, 291);
-  tft.print("PROGRAM");
+  tft.print(F("PROGRAM"));
   tft.drawRect(242, 264, 234, 48, LTGRAY);
   tft.setCursor(364, 291);
-  tft.print("LIVE MODE");
+  tft.print(F("LIVE MODE"));
   
   while ( inSetupMode == true ) {
     TSPoint p = ts.getPoint();
@@ -1208,7 +1228,7 @@ void loadA(uint8_t pId, uint8_t origin){
   tft.setTextColor(LIME);
   tft.setTextSize(3);  
   tft.setCursor(9, 17);
-  tft.print("LOAD PRESET");
+  tft.print(F("LOAD PRESET"));
   
   // print navigation
   tft.drawRect(242, 4, 63, 48, LIME);
@@ -1217,7 +1237,7 @@ void loadA(uint8_t pId, uint8_t origin){
   tft.drawRect(309, 4, 100, 48, LIME);
   tft.setTextSize(2); 
   tft.setCursor(326, 21);
-  tft.print("CANCEL");
+  tft.print(F("CANCEL"));
   tft.setTextSize(3); 
   tft.drawRect(413, 4, 63, 48, LIME);
   tft.setCursor(435, 17);
@@ -1900,7 +1920,7 @@ void saveA(uint8_t pId){
   tft.setTextColor(LIME);
   tft.setTextSize(3);  
   tft.setCursor(9, 17);
-  tft.print("SAVE ");
+  tft.print(F("SAVE "));
   tft.print(pName);
   
   // print navigation
@@ -1910,7 +1930,7 @@ void saveA(uint8_t pId){
   tft.drawRect(309, 4, 100, 48, LIME);
   tft.setTextSize(2); 
   tft.setCursor(326, 21);
-  tft.print("CANCEL");
+  tft.print(F("CANCEL"));
   tft.setTextSize(3); 
   tft.drawRect(413, 4, 63, 48, LIME);
   tft.setCursor(435, 17);
@@ -2477,39 +2497,39 @@ void confirmOverwrite(){
   tft.setTextColor(RED);
   tft.setTextSize(3);
   tft.setCursor(16, 16);
-  tft.print("WARNING!");
+  tft.print(F("WARNING!"));
   tft.setTextSize(2);
   tft.setTextColor(LTGRAY);
   tft.setCursor(8, 84);
-  tft.print("Do you really want to overwrite");
+  tft.print(F("Do you really want to overwrite"));
   tft.setCursor(8, 106);
-  tft.print("Preset ");
+  tft.print(F("Preset "));
   if(fileId < 10) tft.print("0");
   tft.print(fileId);
-  tft.print(" ");
+  tft.print(F(" "));
   tft.setTextColor(GREEN);
   tft.print(pName);
   tft.setTextColor(LTGRAY);
   tft.setCursor(8, 128);
-  tft.print("with ");
+  tft.print(F("with "));
   tft.setTextColor(GREEN);
   tft.print(pNameB);
   tft.setTextColor(LTGRAY);
-  tft.print("?");
+  tft.print(F("?"));
   tft.setCursor(8, 162);
-  tft.print("Once you hit YES there is no way back!");
+  tft.print(F("Once you hit YES there is no way back!"));
   tft.setCursor(8, 206);
-  tft.print("Proceed?");
+  tft.print(F("Proceed?"));
   
   // print Bottom Menu Buttons
   tft.fillRect(4, 264, 234, 48, RED);
   tft.setTextColor(BLACK);
   tft.setTextSize(2);
   tft.setCursor(50, 291);
-  tft.print("NO");
+  tft.print(F("NO"));
   tft.fillRect(242, 264, 234, 48, GREEN);
   tft.setCursor(364, 291);
-  tft.print("YES");
+  tft.print(F("YES"));
   
   // touchscreen loop
   while ( inSetupMode == true ) {
@@ -2562,10 +2582,10 @@ void selectInputTypePage(){
   tft.setCursor(50, 16);
   tft.setTextColor(LTGRAY);
   tft.setTextSize(3);
-  tft.print("Select Patch ");
+  tft.print(F("Select Patch "));
   if(userFriendlyPatchNumber < 10) tft.print("0");
   tft.print(userFriendlyPatchNumber);
-  tft.print(" Input");
+  tft.print(F(" Input"));
   tft.fillRect(4, 56, 115, 100, currentColor);
 
   // build buttons
@@ -2573,29 +2593,29 @@ void selectInputTypePage(){
   tft.setTextColor(BLACK);
   tft.fillRect(4, 56, 234, 100, currentColor);
   tft.setCursor(8, 62);
-  tft.print("Gyro");
+  tft.print(F("Gyro"));
   tft.fillRect(242, 56, 234, 100, currentColor);
   tft.setCursor(246, 62);
-  tft.print("Acceleration");
+  tft.print(F("Acceleration"));
   tft.fillRect(4, 160, 234, 100, currentColor);
   tft.setCursor(8, 164);
-  tft.print("Analog Sensor");
+  tft.print(F("Analog Sensor"));
   tft.fillRect(242, 160, 234, 100, currentColor);
   tft.setCursor(246, 164);
-  tft.print("CV Input");
+  tft.print(F("CV Input"));
 
   // build bottom menu buttons
   tft.drawRect(4, 264, 115, 48, LTGRAY);
   tft.setTextColor(LTGRAY);
   tft.setTextSize(2);
   tft.setCursor(50, 282);
-  tft.print("SETUP");
+  tft.print(F("SETUP"));
   tft.drawRect(123, 264, 115, 48, LTGRAY);
   tft.setCursor(127, 282);
-  tft.print("CANCEL");
+  tft.print(F("CANCEL"));
   tft.drawRect(242, 264, 234, 48, LTGRAY);
   tft.setCursor(364, 291);
-  tft.print("LIVE MODE");
+  tft.print(F("LIVE MODE"));
 
   //TOUCH SCREEN LOOP
   while(inSetupMode == true){
@@ -2683,10 +2703,10 @@ void selectAnalogInputPage(){
   tft.setCursor(50, 16);
   tft.setTextColor(LTGRAY);
   tft.setTextSize(3);
-  tft.print("Select Patch ");
+  tft.print(F("Select Patch "));
   if(userFriendlyPatchNumber < 10) tft.print("0");
   tft.print(userFriendlyPatchNumber);
-  tft.print(" Input");
+  tft.print(F(" Input"));
   tft.fillRect(4, 56, 115, 100, currentColor);
   
   // build buttons and their writing
@@ -2722,13 +2742,13 @@ void selectAnalogInputPage(){
   tft.setTextColor(LTGRAY);
   tft.setTextSize(2);
   tft.setCursor(50, 282);
-  tft.print("SETUP");
+  tft.print(F("SETUP"));
   tft.drawRect(123, 264, 115, 48, LTGRAY);
   tft.setCursor(127, 282);
-  tft.print("CANCEL");
+  tft.print(F("CANCEL"));
   tft.drawRect(242, 264, 234, 48, LTGRAY);
   tft.setCursor(364, 291);
-  tft.print("LIVE MODE");
+  tft.print(F("LIVE MODE"));
 
   //TOUCH SCREEN LOOP
   while(inSetupMode == true){
@@ -2845,10 +2865,10 @@ void selectCvInputPage(){
   tft.setCursor(50, 16);
   tft.setTextColor(LTGRAY);
   tft.setTextSize(3);
-  tft.print("Select Patch ");
-  if(userFriendlyPatchNumber < 10) tft.print("0");
+  tft.print(F("Select Patch "));
+  if(userFriendlyPatchNumber < 10) tft.print(F("0"));
   tft.print(userFriendlyPatchNumber);
-  tft.print(" Input");
+  tft.print(F(" Input"));
   tft.fillRect(4, 56, 115, 100, currentColor);
   
   tft.setTextColor(BLACK);
@@ -2883,13 +2903,13 @@ void selectCvInputPage(){
   tft.setTextColor(LTGRAY);
   tft.setTextSize(2);
   tft.setCursor(50, 282);
-  tft.print("SETUP");
+  tft.print(F("SETUP"));
   tft.drawRect(123, 264, 115, 48, LTGRAY);
   tft.setCursor(127, 282);
-  tft.print("CANCEL");
+  tft.print(F("CANCEL"));
   tft.drawRect(242, 264, 234, 48, LTGRAY);
   tft.setCursor(364, 291);
-  tft.print("LIVE MODE");
+  tft.print(F("LIVE MODE"));
 
   //TOUCH SCREEN LOOP
   while(inSetupMode == true){
@@ -3006,10 +3026,10 @@ void selectGyroInputPage(){
   tft.setCursor(50, 16);
   tft.setTextColor(LTGRAY);
   tft.setTextSize(3);
-  tft.print("Select Patch ");
-  if(userFriendlyPatchNumber < 10) tft.print("0");
+  tft.print(F("Select Patch "));
+  if(userFriendlyPatchNumber < 10) tft.print(F("0"));
   tft.print(userFriendlyPatchNumber);
-  tft.print(" Input");
+  tft.print(F(" Input"));
   tft.fillRect(4, 56, 115, 100, currentColor);
   
   tft.setTextColor(BLACK);
@@ -3041,13 +3061,13 @@ void selectGyroInputPage(){
   tft.setTextColor(LTGRAY);
   tft.setTextSize(2);
   tft.setCursor(50, 282);
-  tft.print("SETUP");
+  tft.print(F("SETUP"));
   tft.drawRect(123, 264, 115, 48, LTGRAY);
   tft.setCursor(127, 282);
-  tft.print("CANCEL");
+  tft.print(F("CANCEL"));
   tft.drawRect(242, 264, 234, 48, LTGRAY);
   tft.setCursor(364, 291);
-  tft.print("LIVE MODE");
+  tft.print(F("LIVE MODE"));
 
   //TOUCH SCREEN LOOP
   while(inSetupMode == true){
@@ -3173,10 +3193,10 @@ void dmpRangeLearn(){
   tft.setCursor(50, 16);
   tft.setTextColor(LTGRAY);
   tft.setTextSize(3);
-  tft.print("Patch ");
-  if(userFriendlyPatchNumber < 10) tft.print("0");
+  tft.print(F("Patch "));
+  if(userFriendlyPatchNumber < 10) tft.print(F("0"));
   tft.print(userFriendlyPatchNumber);
-  tft.print(" Range Setup");
+  tft.print(F(" Range Setup"));
   
   // build bar frames
   tft.drawRect(4, 56, 27, 204, currentColor);
@@ -3193,37 +3213,37 @@ void dmpRangeLearn(){
   tft.setTextSize(2);
   tft.fillRect(123, 56, 115, 100, currentColor);
   tft.setCursor(127, 72);
-  tft.print("SET MIN");
+  tft.print(F("SET MIN"));
   tft.fillRect(123, 160, 115, 100, currentColor);
   tft.setCursor(127, 176);
-  tft.print("SET MAX");
+  tft.print(F("SET MAX"));
   
   // draw help section
   tft.drawRect(242, 56, 234, 204, currentColor);
   tft.setTextColor(currentColor);
   tft.setTextSize(2);
   tft.setCursor(246, 60);
-  tft.print("Left bar: raw");
+  tft.print(F("Left bar: raw"));
   tft.setCursor(246, 78);
-  tft.print("Right bar: scaled");
-  tft.setCursor(246, 96);
-  tft.print("");
+  tft.print(F("Right bar: scaled"));
+  //tft.setCursor(246, 96);
+  //tft.print("");
   tft.setCursor(246, 114);
-  tft.print("For custom range");
+  tft.print(F("For custom range"));
   tft.setCursor(246, 132);
-  tft.print("move sensor to the");
+  tft.print(F("move sensor to the"));
   tft.setCursor(246, 150);
-  tft.print("desired zero position");
+  tft.print(F("desired zero position"));
   tft.setCursor(246, 168);
-  tft.print("and press SET MIN.");
+  tft.print(F("and press SET MIN."));
   tft.setCursor(246, 186);
-  tft.print("Then move it to the");
+  tft.print(F("Then move it to the"));
   tft.setCursor(246, 204);
-  tft.print("desired 100% position");
+  tft.print(F("desired 100% position"));
   tft.setCursor(246, 222);
-  tft.print("and press SET MAX.");
+  tft.print(F("and press SET MAX."));
   tft.setCursor(246, 240);
-  tft.print("Repeat if you like.");
+  tft.print(F("Repeat if you like."));
 
 
   // build Bottom Menu Buttons
@@ -3231,10 +3251,10 @@ void dmpRangeLearn(){
   tft.setTextColor(LTGRAY);
   tft.setTextSize(2);
   tft.setCursor(8, 291);
-  tft.print("SET FULL RANGE");
+  tft.print(F("SET FULL RANGE"));
   tft.drawRect(242, 264, 234, 48, LTGRAY);
   tft.setCursor(341, 291);
-  tft.print("SAVE & EXIT");
+  tft.print(F("SAVE & EXIT"));
 
   // LOOP
   while(inSetupMode == true){
@@ -3358,10 +3378,10 @@ void selectAccInputPage(){
   tft.setCursor(50, 16);
   tft.setTextColor(LTGRAY);
   tft.setTextSize(3);
-  tft.print("Select Patch ");
-  if(userFriendlyPatchNumber < 10) tft.print("0");
+  tft.print(F("Select Patch "));
+  if(userFriendlyPatchNumber < 10) tft.print(F("0"));
   tft.print(userFriendlyPatchNumber);
-  tft.print(" Input");
+  tft.print(F(" Input"));
   tft.fillRect(4, 56, 115, 100, currentColor);
   
   tft.setTextColor(BLACK);
@@ -3393,13 +3413,13 @@ void selectAccInputPage(){
   tft.setTextColor(LTGRAY);
   tft.setTextSize(2);
   tft.setCursor(50, 282);
-  tft.print("SETUP");
+  tft.print(F("SETUP"));
   tft.drawRect(123, 264, 115, 48, LTGRAY);
   tft.setCursor(127, 282);
-  tft.print("CANCEL");
+  tft.print(F("CANCEL"));
   tft.drawRect(242, 264, 234, 48, LTGRAY);
   tft.setCursor(364, 291);
-  tft.print("LIVE MODE");
+  tft.print(F("LIVE MODE"));
 
   //TOUCH SCREEN LOOP
   while(inSetupMode == true){
@@ -3508,7 +3528,7 @@ void selectOutput(){
   tft.setCursor(8, 16); 
   tft.setTextColor(BLACK);
   tft.setTextSize(2);
-  tft.print("MIDI Out 1");
+  tft.print(F("MIDI Out 1"));
   tft.fillRect(242, 4, 234, 48, GRAY);
   tft.fillRect(450, 52, 26, 208, GRAY);
   tft.drawFastHLine(242, 4, 234, currentColor);
@@ -3516,7 +3536,7 @@ void selectOutput(){
   tft.drawFastVLine(476, 4, 256, currentColor);
   tft.drawFastVLine(475, 4, 256, currentColor);
   tft.setCursor(246, 16); 
-  tft.print("MIDI Out 2");
+  tft.print(F("MIDI Out 2"));
 
   tft.fillRect(4, 56, 48, 48, LTGRAY);
   tft.setTextSize(3);
@@ -4138,52 +4158,52 @@ void changeActivePatchPage(){
   tft.setTextColor(BLACK);
   tft.setTextSize(2);
   tft.setCursor(8, 62); 
-  tft.print("Patch 01");
+  tft.print(F("Patch 01"));
   tft.setCursor(8, 83);
   tft.print(patchNames[0]);
   tft.fillRect(242, 56, 234, 48, COLOR6);
   tft.setCursor(247, 62);
-  tft.print("Patch 06");
+  tft.print(F("Patch 06"));
   tft.setCursor(247, 83);
   tft.print(patchNames[5]);
   tft.fillRect(4, 108, 234, 48, COLOR2);
   tft.setCursor(8, 114);
-  tft.print("Patch 02");
+  tft.print(F("Patch 02"));
   tft.setCursor(8, 135);
   tft.print(patchNames[1]);
   tft.fillRect(242, 108, 234, 48, COLOR7);
   tft.setCursor(247, 114);
-  tft.print("Patch 07");
+  tft.print(F("Patch 07"));
   tft.setCursor(247, 135);
   tft.print(patchNames[6]);
   tft.fillRect(4, 160, 234, 48, COLOR3);
   tft.setCursor(8, 166);
-  tft.print("Patch 03");
+  tft.print(F("Patch 03"));
   tft.setCursor(8, 187);
   tft.print(patchNames[2]);
   tft.fillRect(242, 160, 234, 48, COLOR8);
   tft.setCursor(247, 166);
-  tft.print("Patch 08");
+  tft.print(F("Patch 08"));
   tft.setCursor(247, 187);
   tft.print(patchNames[7]);
   tft.fillRect(4, 212, 234, 48, COLOR4);
   tft.setCursor(8, 218);
-  tft.print("Patch 04");
+  tft.print(F("Patch 04"));
   tft.setCursor(8, 239);
   tft.print(patchNames[3]);
   tft.fillRect(242, 212, 234, 48, COLOR9);
   tft.setCursor(247, 218);
-  tft.print("Patch 09");
+  tft.print(F("Patch 09"));
   tft.setCursor(247, 239);
   tft.print(patchNames[8]);
   tft.fillRect(4, 264, 234, 48, COLOR5);
   tft.setCursor(8, 270);
-  tft.print("Patch 05");
+  tft.print(F("Patch 05"));
   tft.setCursor(8, 291);
   tft.print(patchNames[4]);
   tft.fillRect(242, 264, 234, 48, COLOR0);
   tft.setCursor(247, 270);
-  tft.print("Patch 10");
+  tft.print(F("Patch 10"));
   tft.setCursor(247, 291);
   tft.print(patchNames[9]);
 
@@ -5558,14 +5578,14 @@ void keyPadEntry() {
       else if(currentValueIdentifier == 5) {
         currentEntry = 13;
         if(currentValue > limit7bit) currentValue = limit7bit;
-        firstDataByte[currentPatch] = currentValue;
+        ctrlrNrA[currentPatch] = currentValue;
         inKeyPadMode = false;
         patchSetup(currentPatch);
       } 
       else if(currentValueIdentifier == 6) {
         currentEntry = 13;
         if(currentValue > limit7bit) currentValue = limit7bit;
-        firstDataByteB[currentPatch] = currentValue;
+        ctrlrNrB[currentPatch] = currentValue;
         inKeyPadMode = false;
         patchSetup(currentPatch);
       }
@@ -5616,14 +5636,14 @@ void buildValueWindow() {
     tft.setTextColor(GRAY);
     tft.setTextSize(3);
     tft.setCursor(10, 100);
-    tft.print(firstDataByte[currentPatch]);
+    tft.print(ctrlrNrA[currentPatch]);
   } 
   else if(currentValueIdentifier == 6) {
     tft.print("LSB");
     tft.setTextColor(GRAY);
     tft.setTextSize(3);
     tft.setCursor(10, 100);
-    tft.print(firstDataByteB[currentPatch]);
+    tft.print(ctrlrNrB[currentPatch]);
   }
 }
 
@@ -6400,8 +6420,8 @@ void printPositionMarker() {
 }
 
 //====================================================================================
-//-                                                   VOID calculateMotionSendValues =
-void calculateMotionSendValues(){
+//-                                                       VOID processDigitalSensors =
+void processDigitalSensors(){
 
   if (!dmpReady) {
     digitalWrite(errorLED, HIGH);
@@ -6434,125 +6454,125 @@ void calculateMotionSendValues(){
       if(isDmp[0] == true) {
         switch (sensorTypeIdentifier[0]) {
               case 16:
-                secondDataByte[0] = mapfloat(ypr[2], dmpMaxInValue[0], dmpMinInValue[0], minOutValue[0], maxOutValue[0]);
+                patchValue[0] = mapfloat(ypr[2], dmpMaxInValue[0], dmpMinInValue[0], minOutValue[0], maxOutValue[0]);
                 break;
               case 17:
-                secondDataByte[0] = mapfloat(ypr[1], dmpMaxInValue[0], dmpMinInValue[0], minOutValue[0], maxOutValue[0]);
+                patchValue[0] = mapfloat(ypr[1], dmpMaxInValue[0], dmpMinInValue[0], minOutValue[0], maxOutValue[0]);
                 break;
               case 18: 
-                secondDataByte[0] = mapfloat(ypr[0], dmpMaxInValue[0], dmpMinInValue[0], minOutValue[0], maxOutValue[0]);
+                patchValue[0] = mapfloat(ypr[0], dmpMaxInValue[0], dmpMinInValue[0], minOutValue[0], maxOutValue[0]);
                 break;
               case 19:
-                secondDataByte[0] = mapfloat(ypr[2], dmpMaxInValue[0], dmpMinInValue[0], minOutValue[0], maxOutValue[0]);
+                patchValue[0] = mapfloat(ypr[2], dmpMaxInValue[0], dmpMinInValue[0], minOutValue[0], maxOutValue[0]);
                 break;
               case 20: 
-                secondDataByte[0] = mapfloat(ypr[1], dmpMaxInValue[0], dmpMinInValue[0], minOutValue[0], maxOutValue[0]);
+                patchValue[0] = mapfloat(ypr[1], dmpMaxInValue[0], dmpMinInValue[0], minOutValue[0], maxOutValue[0]);
                 break;
               case 21:
-                secondDataByte[0] = mapfloat(ypr[0], dmpMaxInValue[0], dmpMinInValue[0], minOutValue[0], maxOutValue[0]);
+                patchValue[0] = mapfloat(ypr[0], dmpMaxInValue[0], dmpMinInValue[0], minOutValue[0], maxOutValue[0]);
                 break;
         }
-        secondDataByte[0] = constrain(secondDataByte[0], minOutValue[0], maxOutValue[0]);
+        patchValue[0] = constrain(patchValue[0], minOutValue[0], maxOutValue[0]);
         switch (commandIdentifier[0]) {
               case 1: 
                 if(isMidiOut1[0] == true) {
                   // send command via MIDI Out 1
-                  midiA.sendControlChange(firstDataByte[0], secondDataByte[0], midiChan[0]);
+                  midiA.sendControlChange(ctrlrNrA[0], patchValue[0], midiChan[0]);
                 }
                 else {
                   //send command via MIDI Out 2
                   digitalWrite(out2LED, HIGH);
-                  midiB.sendControlChange(firstDataByte[0], secondDataByte[0], midiChan[0]);
+                  midiB.sendControlChange(ctrlrNrA[0], patchValue[0], midiChan[0]);
                   digitalWrite(out2LED, LOW);
                 }
                 break;
               case 2:
                 if(isMidiOut1[0] == true) {
-                  midiA.sendControlChange(nrpnMsb, firstDataByte[0], midiChan[0]);
-                  midiA.sendControlChange(nrpnLsb, firstDataByteB[0], midiChan[0]);
-                  midiA.sendControlChange(6, secondDataByte[0] / nrpnDivisor, midiChan[0]);
-                  midiA.sendControlChange(38, secondDataByte[0] % nrpnDivisor, midiChan[0]);
+                  midiA.sendControlChange(nrpnMsb, ctrlrNrA[0], midiChan[0]);
+                  midiA.sendControlChange(nrpnLsb, ctrlrNrB[0], midiChan[0]);
+                  midiA.sendControlChange(6, patchValue[0] / nrpnDivisor, midiChan[0]);
+                  midiA.sendControlChange(38, patchValue[0] % nrpnDivisor, midiChan[0]);
                 }
                 else {
                   //send command via MIDI Out 2
                   digitalWrite(out2LED, HIGH);
-                  midiB.sendControlChange(nrpnMsb, firstDataByte[0], midiChan[0]);
-                  midiB.sendControlChange(nrpnLsb, firstDataByteB[0], midiChan[0]);
-                  midiB.sendControlChange(6, secondDataByte[0] / nrpnDivisor, midiChan[0]);
-                  midiB.sendControlChange(38, secondDataByte[0] % nrpnDivisor, midiChan[0]);
+                  midiB.sendControlChange(nrpnMsb, ctrlrNrA[0], midiChan[0]);
+                  midiB.sendControlChange(nrpnLsb, ctrlrNrB[0], midiChan[0]);
+                  midiB.sendControlChange(6, patchValue[0] / nrpnDivisor, midiChan[0]);
+                  midiB.sendControlChange(38, patchValue[0] % nrpnDivisor, midiChan[0]);
                   digitalWrite(out2LED, LOW);
                 }
                 break;
               case 3:
                 if(isMidiOut1[0] == true) {
-                  midiA.sendControlChange(rpnMsb, firstDataByte[0], midiChan[0]);
-                  midiA.sendControlChange(rpnLsb, firstDataByteB[0], midiChan[0]);
-                  midiA.sendControlChange(6, secondDataByte[0] / nrpnDivisor, midiChan[0]);
-                  midiA.sendControlChange(38, secondDataByte[0] % nrpnDivisor, midiChan[0]);
+                  midiA.sendControlChange(rpnMsb, ctrlrNrA[0], midiChan[0]);
+                  midiA.sendControlChange(rpnLsb, ctrlrNrB[0], midiChan[0]);
+                  midiA.sendControlChange(6, patchValue[0] / nrpnDivisor, midiChan[0]);
+                  midiA.sendControlChange(38, patchValue[0] % nrpnDivisor, midiChan[0]);
                 }
                 else {
                   //send command via MIDI Out 2
                   digitalWrite(out2LED, HIGH);
-                  midiB.sendControlChange(rpnMsb, firstDataByte[0], midiChan[0]);
-                  midiB.sendControlChange(rpnLsb, firstDataByteB[0], midiChan[0]);
-                  midiB.sendControlChange(6, secondDataByte[0] / nrpnDivisor, midiChan[0]);
-                  midiB.sendControlChange(38, secondDataByte[0] % nrpnDivisor, midiChan[0]);
+                  midiB.sendControlChange(rpnMsb, ctrlrNrA[0], midiChan[0]);
+                  midiB.sendControlChange(rpnLsb, ctrlrNrB[0], midiChan[0]);
+                  midiB.sendControlChange(6, patchValue[0] / nrpnDivisor, midiChan[0]);
+                  midiB.sendControlChange(38, patchValue[0] % nrpnDivisor, midiChan[0]);
                   digitalWrite(out2LED, LOW);
                 }
                 break;
               case 4:
                 if(isMidiOut1[0] == true) {
-                  midiA.sendControlChange(nrpnMsb, firstDataByte[0], midiChan[0]);
-                  midiA.sendControlChange(nrpnLsb, firstDataByteB[0], midiChan[0]);
-                  midiA.sendControlChange(6, secondDataByte[0], midiChan[0]);
+                  midiA.sendControlChange(nrpnMsb, ctrlrNrA[0], midiChan[0]);
+                  midiA.sendControlChange(nrpnLsb, ctrlrNrB[0], midiChan[0]);
+                  midiA.sendControlChange(6, patchValue[0], midiChan[0]);
                 }
                 else {
                   //send command via MIDI Out 2
                   digitalWrite(out2LED, HIGH);
-                  midiB.sendControlChange(nrpnMsb, firstDataByte[0], midiChan[0]);
-                  midiB.sendControlChange(nrpnLsb, firstDataByteB[0], midiChan[0]);
-                  midiB.sendControlChange(6, secondDataByte[0], midiChan[0]);
+                  midiB.sendControlChange(nrpnMsb, ctrlrNrA[0], midiChan[0]);
+                  midiB.sendControlChange(nrpnLsb, ctrlrNrB[0], midiChan[0]);
+                  midiB.sendControlChange(6, patchValue[0], midiChan[0]);
                   digitalWrite(out2LED, LOW);
                 }
                 break;
               case 5: 
                 if(isMidiOut1[0] == true) {
                   // send command via MIDI Out 1
-                  midiA.sendControlChange(firstDataByte[0], secondDataByte[0] / nrpnDivisor, midiChan[0]);
-                  midiA.sendControlChange(firstDataByteB[0], secondDataByte[0] % nrpnDivisor, midiChan[0]);
+                  midiA.sendControlChange(ctrlrNrA[0], patchValue[0] / nrpnDivisor, midiChan[0]);
+                  midiA.sendControlChange(ctrlrNrB[0], patchValue[0] % nrpnDivisor, midiChan[0]);
                 }
                 else {
                   //send command via MIDI Out 2
                   digitalWrite(out2LED, HIGH);
-                  midiB.sendControlChange(firstDataByte[0], secondDataByte[0] / nrpnDivisor, midiChan[0]);
-                  midiB.sendControlChange(firstDataByteB[0], secondDataByte[0] % nrpnDivisor, midiChan[0]);
+                  midiB.sendControlChange(ctrlrNrA[0], patchValue[0] / nrpnDivisor, midiChan[0]);
+                  midiB.sendControlChange(ctrlrNrB[0], patchValue[0] % nrpnDivisor, midiChan[0]);
                   digitalWrite(out2LED, LOW);
                 }
                 break;
               case 6:
                 // CV OUT 1
-                dac.outputA(secondDataByte[0]);                
+                dac.outputA(patchValue[0]);                
                 break;
               case 7:
-                dac.outputB(secondDataByte[0]);                
+                dac.outputB(patchValue[0]);                
                 break;
               case 8:
-                dac2.outputA(secondDataByte[0]);                
+                dac2.outputA(patchValue[0]);                
                 break;
               case 9:
-                dac2.outputB(secondDataByte[0]);                
+                dac2.outputB(patchValue[0]);                
                 break;
               case 10:
-                dac3.outputA(secondDataByte[0]);                
+                dac3.outputA(patchValue[0]);                
                 break;
               case 11:
-                dac3.outputB(secondDataByte[0]);                
+                dac3.outputB(patchValue[0]);                
                 break;
               case 12:
-                dac4.outputA(secondDataByte[0]);                
+                dac4.outputA(patchValue[0]);                
                 break;
               case 13:
-                dac4.outputB(secondDataByte[0]);                
+                dac4.outputB(patchValue[0]);                
                 break;
         }
       }
@@ -6561,125 +6581,125 @@ void calculateMotionSendValues(){
       if(isDmp[1] == true) {
         switch (sensorTypeIdentifier[1]) {
               case 16:
-                secondDataByte[1] = mapfloat(ypr[2], dmpMaxInValue[1], dmpMinInValue[1], minOutValue[1], maxOutValue[1]);
+                patchValue[1] = mapfloat(ypr[2], dmpMaxInValue[1], dmpMinInValue[1], minOutValue[1], maxOutValue[1]);
                 break;
               case 17:
-                secondDataByte[1] = mapfloat(ypr[1], dmpMaxInValue[1], dmpMinInValue[1], minOutValue[1], maxOutValue[1]);
+                patchValue[1] = mapfloat(ypr[1], dmpMaxInValue[1], dmpMinInValue[1], minOutValue[1], maxOutValue[1]);
                 break;
               case 18: 
-                secondDataByte[1] = mapfloat(ypr[0], dmpMaxInValue[1], dmpMinInValue[1], minOutValue[1], maxOutValue[1]);
+                patchValue[1] = mapfloat(ypr[0], dmpMaxInValue[1], dmpMinInValue[1], minOutValue[1], maxOutValue[1]);
                 break;
               case 19:
-                secondDataByte[1] = mapfloat(ypr[2], dmpMaxInValue[1], dmpMinInValue[1], minOutValue[1], maxOutValue[1]);
+                patchValue[1] = mapfloat(ypr[2], dmpMaxInValue[1], dmpMinInValue[1], minOutValue[1], maxOutValue[1]);
                 break;
               case 20: 
-                secondDataByte[1] = mapfloat(ypr[1], dmpMaxInValue[1], dmpMinInValue[1], minOutValue[1], maxOutValue[1]);
+                patchValue[1] = mapfloat(ypr[1], dmpMaxInValue[1], dmpMinInValue[1], minOutValue[1], maxOutValue[1]);
                 break;
               case 21:
-                secondDataByte[1] = mapfloat(ypr[0], dmpMaxInValue[1], dmpMinInValue[1], minOutValue[1], maxOutValue[1]);
+                patchValue[1] = mapfloat(ypr[0], dmpMaxInValue[1], dmpMinInValue[1], minOutValue[1], maxOutValue[1]);
                 break;
         }
-        secondDataByte[1] = constrain(secondDataByte[1], minOutValue[1], maxOutValue[1]);
+        patchValue[1] = constrain(patchValue[1], minOutValue[1], maxOutValue[1]);
         switch (commandIdentifier[1]) {
               case 1: 
                 if(isMidiOut1[1] == true) {
                   // send command via MIDI Out 1
-                  midiA.sendControlChange(firstDataByte[1], secondDataByte[1], midiChan[1]);
+                  midiA.sendControlChange(ctrlrNrA[1], patchValue[1], midiChan[1]);
                 }
                 else {
                   //send command via MIDI Out 2
                   digitalWrite(out2LED, HIGH);
-                  midiB.sendControlChange(firstDataByte[1], secondDataByte[1], midiChan[1]);
+                  midiB.sendControlChange(ctrlrNrA[1], patchValue[1], midiChan[1]);
                   digitalWrite(out2LED, LOW);
                 }
                 break;
               case 2:
                 if(isMidiOut1[1] == true) {
-                  midiA.sendControlChange(nrpnMsb, firstDataByte[1], midiChan[1]);
-                  midiA.sendControlChange(nrpnLsb, firstDataByteB[1], midiChan[1]);
-                  midiA.sendControlChange(6, secondDataByte[1] / nrpnDivisor, midiChan[1]);
-                  midiA.sendControlChange(38, secondDataByte[1] % nrpnDivisor, midiChan[1]);
+                  midiA.sendControlChange(nrpnMsb, ctrlrNrA[1], midiChan[1]);
+                  midiA.sendControlChange(nrpnLsb, ctrlrNrB[1], midiChan[1]);
+                  midiA.sendControlChange(6, patchValue[1] / nrpnDivisor, midiChan[1]);
+                  midiA.sendControlChange(38, patchValue[1] % nrpnDivisor, midiChan[1]);
                 }
                 else {
                   //send command via MIDI Out 2
                   digitalWrite(out2LED, HIGH);
-                  midiB.sendControlChange(nrpnMsb, firstDataByte[1], midiChan[1]);
-                  midiB.sendControlChange(nrpnLsb, firstDataByteB[1], midiChan[1]);
-                  midiB.sendControlChange(6, secondDataByte[1] / nrpnDivisor, midiChan[1]);
-                  midiB.sendControlChange(38, secondDataByte[1] % nrpnDivisor, midiChan[1]);
+                  midiB.sendControlChange(nrpnMsb, ctrlrNrA[1], midiChan[1]);
+                  midiB.sendControlChange(nrpnLsb, ctrlrNrB[1], midiChan[1]);
+                  midiB.sendControlChange(6, patchValue[1] / nrpnDivisor, midiChan[1]);
+                  midiB.sendControlChange(38, patchValue[1] % nrpnDivisor, midiChan[1]);
                   digitalWrite(out2LED, LOW);
                 }
                 break;
               case 3:
                 if(isMidiOut1[1] == true) {
-                  midiA.sendControlChange(rpnMsb, firstDataByte[1], midiChan[1]);
-                  midiA.sendControlChange(rpnLsb, firstDataByteB[1], midiChan[1]);
-                  midiA.sendControlChange(6, secondDataByte[1] / nrpnDivisor, midiChan[1]);
-                  midiA.sendControlChange(38, secondDataByte[1] % nrpnDivisor, midiChan[1]);
+                  midiA.sendControlChange(rpnMsb, ctrlrNrA[1], midiChan[1]);
+                  midiA.sendControlChange(rpnLsb, ctrlrNrB[1], midiChan[1]);
+                  midiA.sendControlChange(6, patchValue[1] / nrpnDivisor, midiChan[1]);
+                  midiA.sendControlChange(38, patchValue[1] % nrpnDivisor, midiChan[1]);
                 }
                 else {
                   //send command via MIDI Out 2
                   digitalWrite(out2LED, HIGH);
-                  midiB.sendControlChange(rpnMsb, firstDataByte[1], midiChan[1]);
-                  midiB.sendControlChange(rpnLsb, firstDataByteB[1], midiChan[1]);
-                  midiB.sendControlChange(6, secondDataByte[1] / nrpnDivisor, midiChan[1]);
-                  midiB.sendControlChange(38, secondDataByte[1] % nrpnDivisor, midiChan[1]);
+                  midiB.sendControlChange(rpnMsb, ctrlrNrA[1], midiChan[1]);
+                  midiB.sendControlChange(rpnLsb, ctrlrNrB[1], midiChan[1]);
+                  midiB.sendControlChange(6, patchValue[1] / nrpnDivisor, midiChan[1]);
+                  midiB.sendControlChange(38, patchValue[1] % nrpnDivisor, midiChan[1]);
                   digitalWrite(out2LED, LOW);
                 }
                 break;
               case 4:
                 if(isMidiOut1[1] == true) {
-                  midiA.sendControlChange(nrpnMsb, firstDataByte[1], midiChan[1]);
-                  midiA.sendControlChange(nrpnLsb, firstDataByteB[1], midiChan[1]);
-                  midiA.sendControlChange(6, secondDataByte[1], midiChan[1]);
+                  midiA.sendControlChange(nrpnMsb, ctrlrNrA[1], midiChan[1]);
+                  midiA.sendControlChange(nrpnLsb, ctrlrNrB[1], midiChan[1]);
+                  midiA.sendControlChange(6, patchValue[1], midiChan[1]);
                 }
                 else {
                   //send command via MIDI Out 2
                   digitalWrite(out2LED, HIGH);
-                  midiB.sendControlChange(nrpnMsb, firstDataByte[1], midiChan[1]);
-                  midiB.sendControlChange(nrpnLsb, firstDataByteB[1], midiChan[1]);
-                  midiB.sendControlChange(6, secondDataByte[1], midiChan[1]);
+                  midiB.sendControlChange(nrpnMsb, ctrlrNrA[1], midiChan[1]);
+                  midiB.sendControlChange(nrpnLsb, ctrlrNrB[1], midiChan[1]);
+                  midiB.sendControlChange(6, patchValue[1], midiChan[1]);
                   digitalWrite(out2LED, LOW);
                 }
                 break;
               case 5: 
                 if(isMidiOut1[1] == true) {
                   // send command via MIDI Out 1
-                  midiA.sendControlChange(firstDataByte[1], secondDataByte[1] / nrpnDivisor, midiChan[1]);
-                  midiA.sendControlChange(firstDataByteB[1], secondDataByte[1] % nrpnDivisor, midiChan[1]);
+                  midiA.sendControlChange(ctrlrNrA[1], patchValue[1] / nrpnDivisor, midiChan[1]);
+                  midiA.sendControlChange(ctrlrNrB[1], patchValue[1] % nrpnDivisor, midiChan[1]);
                 }
                 else {
                   //send command via MIDI Out 2
                   digitalWrite(out2LED, HIGH);
-                  midiB.sendControlChange(firstDataByte[1], secondDataByte[1] / nrpnDivisor, midiChan[1]);
-                  midiB.sendControlChange(firstDataByteB[1], secondDataByte[1] % nrpnDivisor, midiChan[1]);
+                  midiB.sendControlChange(ctrlrNrA[1], patchValue[1] / nrpnDivisor, midiChan[1]);
+                  midiB.sendControlChange(ctrlrNrB[1], patchValue[1] % nrpnDivisor, midiChan[1]);
                   digitalWrite(out2LED, LOW);
                 }
                 break;
               case 6:
                 // CV OUT 1
-                dac.outputA(secondDataByte[1]);                
+                dac.outputA(patchValue[1]);                
                 break;
               case 7:
-                dac.outputB(secondDataByte[1]);                
+                dac.outputB(patchValue[1]);                
                 break;
               case 8:
-                dac2.outputA(secondDataByte[1]);                
+                dac2.outputA(patchValue[1]);                
                 break;
               case 9:
-                dac2.outputB(secondDataByte[1]);                
+                dac2.outputB(patchValue[1]);                
                 break;
               case 10:
-                dac3.outputA(secondDataByte[1]);                
+                dac3.outputA(patchValue[1]);                
                 break;
               case 11:
-                dac3.outputB(secondDataByte[1]);                
+                dac3.outputB(patchValue[1]);                
                 break;
               case 12:
-                dac4.outputA(secondDataByte[1]);                
+                dac4.outputA(patchValue[1]);                
                 break;
               case 13:
-                dac4.outputB(secondDataByte[1]);                
+                dac4.outputB(patchValue[1]);                
                 break;
         }
       }
@@ -6688,125 +6708,125 @@ void calculateMotionSendValues(){
       if(isDmp[2] == true) {
         switch (sensorTypeIdentifier[2]) {
               case 16:
-                secondDataByte[2] = mapfloat(ypr[2], dmpMaxInValue[2], dmpMinInValue[2], minOutValue[2], maxOutValue[2]);
+                patchValue[2] = mapfloat(ypr[2], dmpMaxInValue[2], dmpMinInValue[2], minOutValue[2], maxOutValue[2]);
                 break;
               case 17:
-                secondDataByte[2] = mapfloat(ypr[1], dmpMaxInValue[2], dmpMinInValue[2], minOutValue[2], maxOutValue[2]);
+                patchValue[2] = mapfloat(ypr[1], dmpMaxInValue[2], dmpMinInValue[2], minOutValue[2], maxOutValue[2]);
                 break;
               case 18: 
-                secondDataByte[2] = mapfloat(ypr[0], dmpMaxInValue[2], dmpMinInValue[2], minOutValue[2], maxOutValue[2]);
+                patchValue[2] = mapfloat(ypr[0], dmpMaxInValue[2], dmpMinInValue[2], minOutValue[2], maxOutValue[2]);
                 break;
               case 19:
-                secondDataByte[2] = mapfloat(ypr[2], dmpMaxInValue[2], dmpMinInValue[2], minOutValue[2], maxOutValue[2]);
+                patchValue[2] = mapfloat(ypr[2], dmpMaxInValue[2], dmpMinInValue[2], minOutValue[2], maxOutValue[2]);
                 break;
               case 20: 
-                secondDataByte[2] = mapfloat(ypr[1], dmpMaxInValue[2], dmpMinInValue[2], minOutValue[2], maxOutValue[2]);
+                patchValue[2] = mapfloat(ypr[1], dmpMaxInValue[2], dmpMinInValue[2], minOutValue[2], maxOutValue[2]);
                 break;
               case 21:
-                secondDataByte[2] = mapfloat(ypr[0], dmpMaxInValue[2], dmpMinInValue[2], minOutValue[2], maxOutValue[2]);
+                patchValue[2] = mapfloat(ypr[0], dmpMaxInValue[2], dmpMinInValue[2], minOutValue[2], maxOutValue[2]);
                 break;
         }
-        secondDataByte[2] = constrain(secondDataByte[2], minOutValue[2], maxOutValue[2]);
+        patchValue[2] = constrain(patchValue[2], minOutValue[2], maxOutValue[2]);
         switch (commandIdentifier[2]) {
               case 1: 
                 if(isMidiOut1[2] == true) {
                   // send command via MIDI Out 1
-                  midiA.sendControlChange(firstDataByte[2], secondDataByte[2], midiChan[2]);
+                  midiA.sendControlChange(ctrlrNrA[2], patchValue[2], midiChan[2]);
                 }
                 else {
                   //send command via MIDI Out 2
                   digitalWrite(out2LED, HIGH);
-                  midiB.sendControlChange(firstDataByte[2], secondDataByte[2], midiChan[2]);
+                  midiB.sendControlChange(ctrlrNrA[2], patchValue[2], midiChan[2]);
                   digitalWrite(out2LED, LOW);
                 }
                 break;
               case 2:
                 if(isMidiOut1[2] == true) {
-                  midiA.sendControlChange(nrpnMsb, firstDataByte[2], midiChan[2]);
-                  midiA.sendControlChange(nrpnLsb, firstDataByteB[2], midiChan[2]);
-                  midiA.sendControlChange(6, secondDataByte[2] / nrpnDivisor, midiChan[2]);
-                  midiA.sendControlChange(38, secondDataByte[2] % nrpnDivisor, midiChan[2]);
+                  midiA.sendControlChange(nrpnMsb, ctrlrNrA[2], midiChan[2]);
+                  midiA.sendControlChange(nrpnLsb, ctrlrNrB[2], midiChan[2]);
+                  midiA.sendControlChange(6, patchValue[2] / nrpnDivisor, midiChan[2]);
+                  midiA.sendControlChange(38, patchValue[2] % nrpnDivisor, midiChan[2]);
                 }
                 else {
                   //send command via MIDI Out 2
                   digitalWrite(out2LED, HIGH);
-                  midiB.sendControlChange(nrpnMsb, firstDataByte[2], midiChan[2]);
-                  midiB.sendControlChange(nrpnLsb, firstDataByteB[2], midiChan[2]);
-                  midiB.sendControlChange(6, secondDataByte[2] / nrpnDivisor, midiChan[2]);
-                  midiB.sendControlChange(38, secondDataByte[2] % nrpnDivisor, midiChan[2]);
+                  midiB.sendControlChange(nrpnMsb, ctrlrNrA[2], midiChan[2]);
+                  midiB.sendControlChange(nrpnLsb, ctrlrNrB[2], midiChan[2]);
+                  midiB.sendControlChange(6, patchValue[2] / nrpnDivisor, midiChan[2]);
+                  midiB.sendControlChange(38, patchValue[2] % nrpnDivisor, midiChan[2]);
                   digitalWrite(out2LED, LOW);
                 }
                 break;
               case 3:
                 if(isMidiOut1[2] == true) {
-                  midiA.sendControlChange(rpnMsb, firstDataByte[2], midiChan[2]);
-                  midiA.sendControlChange(rpnLsb, firstDataByteB[2], midiChan[2]);
-                  midiA.sendControlChange(6, secondDataByte[2] / nrpnDivisor, midiChan[2]);
-                  midiA.sendControlChange(38, secondDataByte[2] % nrpnDivisor, midiChan[2]);
+                  midiA.sendControlChange(rpnMsb, ctrlrNrA[2], midiChan[2]);
+                  midiA.sendControlChange(rpnLsb, ctrlrNrB[2], midiChan[2]);
+                  midiA.sendControlChange(6, patchValue[2] / nrpnDivisor, midiChan[2]);
+                  midiA.sendControlChange(38, patchValue[2] % nrpnDivisor, midiChan[2]);
                 }
                 else {
                   //send command via MIDI Out 2
                   digitalWrite(out2LED, HIGH);
-                  midiB.sendControlChange(rpnMsb, firstDataByte[2], midiChan[2]);
-                  midiB.sendControlChange(rpnLsb, firstDataByteB[2], midiChan[2]);
-                  midiB.sendControlChange(6, secondDataByte[2] / nrpnDivisor, midiChan[2]);
-                  midiB.sendControlChange(38, secondDataByte[2] % nrpnDivisor, midiChan[2]);
+                  midiB.sendControlChange(rpnMsb, ctrlrNrA[2], midiChan[2]);
+                  midiB.sendControlChange(rpnLsb, ctrlrNrB[2], midiChan[2]);
+                  midiB.sendControlChange(6, patchValue[2] / nrpnDivisor, midiChan[2]);
+                  midiB.sendControlChange(38, patchValue[2] % nrpnDivisor, midiChan[2]);
                   digitalWrite(out2LED, LOW);
                 }
                 break;
               case 4:
                 if(isMidiOut1[2] == true) {
-                  midiA.sendControlChange(nrpnMsb, firstDataByte[2], midiChan[2]);
-                  midiA.sendControlChange(nrpnLsb, firstDataByteB[2], midiChan[2]);
-                  midiA.sendControlChange(6, secondDataByte[2], midiChan[2]);
+                  midiA.sendControlChange(nrpnMsb, ctrlrNrA[2], midiChan[2]);
+                  midiA.sendControlChange(nrpnLsb, ctrlrNrB[2], midiChan[2]);
+                  midiA.sendControlChange(6, patchValue[2], midiChan[2]);
                 }
                 else {
                   //send command via MIDI Out 2
                   digitalWrite(out2LED, HIGH);
-                  midiB.sendControlChange(nrpnMsb, firstDataByte[2], midiChan[2]);
-                  midiB.sendControlChange(nrpnLsb, firstDataByteB[2], midiChan[2]);
-                  midiB.sendControlChange(6, secondDataByte[2], midiChan[2]);
+                  midiB.sendControlChange(nrpnMsb, ctrlrNrA[2], midiChan[2]);
+                  midiB.sendControlChange(nrpnLsb, ctrlrNrB[2], midiChan[2]);
+                  midiB.sendControlChange(6, patchValue[2], midiChan[2]);
                   digitalWrite(out2LED, LOW);
                 }
                 break;
               case 5: 
                 if(isMidiOut1[2] == true) {
                   // send command via MIDI Out 1
-                  midiA.sendControlChange(firstDataByte[2], secondDataByte[2] / nrpnDivisor, midiChan[2]);
-                  midiA.sendControlChange(firstDataByteB[2], secondDataByte[2] % nrpnDivisor, midiChan[2]);
+                  midiA.sendControlChange(ctrlrNrA[2], patchValue[2] / nrpnDivisor, midiChan[2]);
+                  midiA.sendControlChange(ctrlrNrB[2], patchValue[2] % nrpnDivisor, midiChan[2]);
                 }
                 else {
                   //send command via MIDI Out 2
                   digitalWrite(out2LED, HIGH);
-                  midiB.sendControlChange(firstDataByte[2], secondDataByte[2] / nrpnDivisor, midiChan[2]);
-                  midiB.sendControlChange(firstDataByteB[2], secondDataByte[2] % nrpnDivisor, midiChan[2]);
+                  midiB.sendControlChange(ctrlrNrA[2], patchValue[2] / nrpnDivisor, midiChan[2]);
+                  midiB.sendControlChange(ctrlrNrB[2], patchValue[2] % nrpnDivisor, midiChan[2]);
                   digitalWrite(out2LED, LOW);
                 }
                 break;
               case 6:
                 // CV OUT 1
-                dac.outputA(secondDataByte[2]);                
+                dac.outputA(patchValue[2]);                
                 break;
               case 7:
-                dac.outputB(secondDataByte[2]);                
+                dac.outputB(patchValue[2]);                
                 break;
               case 8:
-                dac2.outputA(secondDataByte[2]);                
+                dac2.outputA(patchValue[2]);                
                 break;
               case 9:
-                dac2.outputB(secondDataByte[2]);                
+                dac2.outputB(patchValue[2]);                
                 break;
               case 10:
-                dac3.outputA(secondDataByte[2]);                
+                dac3.outputA(patchValue[2]);                
                 break;
               case 11:
-                dac3.outputB(secondDataByte[2]);                
+                dac3.outputB(patchValue[2]);                
                 break;
               case 12:
-                dac4.outputA(secondDataByte[2]);                
+                dac4.outputA(patchValue[2]);                
                 break;
               case 13:
-                dac4.outputB(secondDataByte[2]);                
+                dac4.outputB(patchValue[2]);                
                 break;
         }
       }
@@ -6815,125 +6835,125 @@ void calculateMotionSendValues(){
       if(isDmp[3] == true) {
         switch (sensorTypeIdentifier[3]) {
               case 16:
-                secondDataByte[3] = mapfloat(ypr[2], dmpMaxInValue[3], dmpMinInValue[3], minOutValue[3], maxOutValue[3]);
+                patchValue[3] = mapfloat(ypr[2], dmpMaxInValue[3], dmpMinInValue[3], minOutValue[3], maxOutValue[3]);
                 break;
               case 17:
-                secondDataByte[3] = mapfloat(ypr[1], dmpMaxInValue[3], dmpMinInValue[3], minOutValue[3], maxOutValue[3]);
+                patchValue[3] = mapfloat(ypr[1], dmpMaxInValue[3], dmpMinInValue[3], minOutValue[3], maxOutValue[3]);
                 break;
               case 18: 
-                secondDataByte[3] = mapfloat(ypr[0], dmpMaxInValue[3], dmpMinInValue[3], minOutValue[3], maxOutValue[3]);
+                patchValue[3] = mapfloat(ypr[0], dmpMaxInValue[3], dmpMinInValue[3], minOutValue[3], maxOutValue[3]);
                 break;
               case 19:
-                secondDataByte[3] = mapfloat(ypr[2], dmpMaxInValue[3], dmpMinInValue[3], minOutValue[3], maxOutValue[3]);
+                patchValue[3] = mapfloat(ypr[2], dmpMaxInValue[3], dmpMinInValue[3], minOutValue[3], maxOutValue[3]);
                 break;
               case 20: 
-                secondDataByte[3] = mapfloat(ypr[1], dmpMaxInValue[3], dmpMinInValue[3], minOutValue[3], maxOutValue[3]);
+                patchValue[3] = mapfloat(ypr[1], dmpMaxInValue[3], dmpMinInValue[3], minOutValue[3], maxOutValue[3]);
                 break;
               case 21:
-                secondDataByte[3] = mapfloat(ypr[0], dmpMaxInValue[3], dmpMinInValue[3], minOutValue[3], maxOutValue[3]);
+                patchValue[3] = mapfloat(ypr[0], dmpMaxInValue[3], dmpMinInValue[3], minOutValue[3], maxOutValue[3]);
                 break;
         }
-        secondDataByte[3] = constrain(secondDataByte[3], minOutValue[3], maxOutValue[3]);
+        patchValue[3] = constrain(patchValue[3], minOutValue[3], maxOutValue[3]);
         switch (commandIdentifier[3]) {
               case 1: 
                 if(isMidiOut1[3] == true) {
                   // send command via MIDI Out 1
-                  midiA.sendControlChange(firstDataByte[3], secondDataByte[3], midiChan[3]);
+                  midiA.sendControlChange(ctrlrNrA[3], patchValue[3], midiChan[3]);
                 }
                 else {
                   //send command via MIDI Out 2
                   digitalWrite(out2LED, HIGH);
-                  midiB.sendControlChange(firstDataByte[3], secondDataByte[3], midiChan[3]);
+                  midiB.sendControlChange(ctrlrNrA[3], patchValue[3], midiChan[3]);
                   digitalWrite(out2LED, LOW);
                 }
                 break;
               case 2:
                 if(isMidiOut1[3] == true) {
-                  midiA.sendControlChange(nrpnMsb, firstDataByte[3], midiChan[3]);
-                  midiA.sendControlChange(nrpnLsb, firstDataByteB[3], midiChan[3]);
-                  midiA.sendControlChange(6, secondDataByte[3] / nrpnDivisor, midiChan[3]);
-                  midiA.sendControlChange(38, secondDataByte[3] % nrpnDivisor, midiChan[3]);
+                  midiA.sendControlChange(nrpnMsb, ctrlrNrA[3], midiChan[3]);
+                  midiA.sendControlChange(nrpnLsb, ctrlrNrB[3], midiChan[3]);
+                  midiA.sendControlChange(6, patchValue[3] / nrpnDivisor, midiChan[3]);
+                  midiA.sendControlChange(38, patchValue[3] % nrpnDivisor, midiChan[3]);
                 }
                 else {
                   //send command via MIDI Out 2
                   digitalWrite(out2LED, HIGH);
-                  midiB.sendControlChange(nrpnMsb, firstDataByte[3], midiChan[3]);
-                  midiB.sendControlChange(nrpnLsb, firstDataByteB[3], midiChan[3]);
-                  midiB.sendControlChange(6, secondDataByte[3] / nrpnDivisor, midiChan[3]);
-                  midiB.sendControlChange(38, secondDataByte[3] % nrpnDivisor, midiChan[3]);
+                  midiB.sendControlChange(nrpnMsb, ctrlrNrA[3], midiChan[3]);
+                  midiB.sendControlChange(nrpnLsb, ctrlrNrB[3], midiChan[3]);
+                  midiB.sendControlChange(6, patchValue[3] / nrpnDivisor, midiChan[3]);
+                  midiB.sendControlChange(38, patchValue[3] % nrpnDivisor, midiChan[3]);
                   digitalWrite(out2LED, LOW);
                 }
                 break;
               case 3:
                 if(isMidiOut1[3] == true) {
-                  midiA.sendControlChange(rpnMsb, firstDataByte[3], midiChan[3]);
-                  midiA.sendControlChange(rpnLsb, firstDataByteB[3], midiChan[3]);
-                  midiA.sendControlChange(6, secondDataByte[3] / nrpnDivisor, midiChan[3]);
-                  midiA.sendControlChange(38, secondDataByte[3] % nrpnDivisor, midiChan[3]);
+                  midiA.sendControlChange(rpnMsb, ctrlrNrA[3], midiChan[3]);
+                  midiA.sendControlChange(rpnLsb, ctrlrNrB[3], midiChan[3]);
+                  midiA.sendControlChange(6, patchValue[3] / nrpnDivisor, midiChan[3]);
+                  midiA.sendControlChange(38, patchValue[3] % nrpnDivisor, midiChan[3]);
                 }
                 else {
                   //send command via MIDI Out 2
                   digitalWrite(out2LED, HIGH);
-                  midiB.sendControlChange(rpnMsb, firstDataByte[3], midiChan[3]);
-                  midiB.sendControlChange(rpnLsb, firstDataByteB[3], midiChan[3]);
-                  midiB.sendControlChange(6, secondDataByte[3] / nrpnDivisor, midiChan[3]);
-                  midiB.sendControlChange(38, secondDataByte[3] % nrpnDivisor, midiChan[3]);
+                  midiB.sendControlChange(rpnMsb, ctrlrNrA[3], midiChan[3]);
+                  midiB.sendControlChange(rpnLsb, ctrlrNrB[3], midiChan[3]);
+                  midiB.sendControlChange(6, patchValue[3] / nrpnDivisor, midiChan[3]);
+                  midiB.sendControlChange(38, patchValue[3] % nrpnDivisor, midiChan[3]);
                   digitalWrite(out2LED, LOW);
                 }
                 break;
               case 4:
                 if(isMidiOut1[3] == true) {
-                  midiA.sendControlChange(nrpnMsb, firstDataByte[3], midiChan[3]);
-                  midiA.sendControlChange(nrpnLsb, firstDataByteB[3], midiChan[3]);
-                  midiA.sendControlChange(6, secondDataByte[3], midiChan[3]);
+                  midiA.sendControlChange(nrpnMsb, ctrlrNrA[3], midiChan[3]);
+                  midiA.sendControlChange(nrpnLsb, ctrlrNrB[3], midiChan[3]);
+                  midiA.sendControlChange(6, patchValue[3], midiChan[3]);
                 }
                 else {
                   //send command via MIDI Out 2
                   digitalWrite(out2LED, HIGH);
-                  midiB.sendControlChange(nrpnMsb, firstDataByte[3], midiChan[3]);
-                  midiB.sendControlChange(nrpnLsb, firstDataByteB[3], midiChan[3]);
-                  midiB.sendControlChange(6, secondDataByte[3], midiChan[3]);
+                  midiB.sendControlChange(nrpnMsb, ctrlrNrA[3], midiChan[3]);
+                  midiB.sendControlChange(nrpnLsb, ctrlrNrB[3], midiChan[3]);
+                  midiB.sendControlChange(6, patchValue[3], midiChan[3]);
                   digitalWrite(out2LED, LOW);
                 }
                 break;
               case 5: 
                 if(isMidiOut1[3] == true) {
                   // send command via MIDI Out 1
-                  midiA.sendControlChange(firstDataByte[3], secondDataByte[3] / nrpnDivisor, midiChan[3]);
-                  midiA.sendControlChange(firstDataByteB[3], secondDataByte[3] % nrpnDivisor, midiChan[3]);
+                  midiA.sendControlChange(ctrlrNrA[3], patchValue[3] / nrpnDivisor, midiChan[3]);
+                  midiA.sendControlChange(ctrlrNrB[3], patchValue[3] % nrpnDivisor, midiChan[3]);
                 }
                 else {
                   //send command via MIDI Out 2
                   digitalWrite(out2LED, HIGH);
-                  midiB.sendControlChange(firstDataByte[3], secondDataByte[3] / nrpnDivisor, midiChan[3]);
-                  midiB.sendControlChange(firstDataByteB[3], secondDataByte[3] % nrpnDivisor, midiChan[3]);
+                  midiB.sendControlChange(ctrlrNrA[3], patchValue[3] / nrpnDivisor, midiChan[3]);
+                  midiB.sendControlChange(ctrlrNrB[3], patchValue[3] % nrpnDivisor, midiChan[3]);
                   digitalWrite(out2LED, LOW);
                 }
                 break;
               case 6:
                 // CV OUT 1
-                dac.outputA(secondDataByte[3]);                
+                dac.outputA(patchValue[3]);                
                 break;
               case 7:
-                dac.outputB(secondDataByte[3]);                
+                dac.outputB(patchValue[3]);                
                 break;
               case 8:
-                dac2.outputA(secondDataByte[3]);                
+                dac2.outputA(patchValue[3]);                
                 break;
               case 9:
-                dac2.outputB(secondDataByte[3]);                
+                dac2.outputB(patchValue[3]);                
                 break;
               case 10:
-                dac3.outputA(secondDataByte[3]);                
+                dac3.outputA(patchValue[3]);                
                 break;
               case 11:
-                dac3.outputB(secondDataByte[3]);                
+                dac3.outputB(patchValue[3]);                
                 break;
               case 12:
-                dac4.outputA(secondDataByte[3]);                
+                dac4.outputA(patchValue[3]);                
                 break;
               case 13:
-                dac4.outputB(secondDataByte[3]);                
+                dac4.outputB(patchValue[3]);                
                 break;
         }
       }
@@ -6942,125 +6962,125 @@ void calculateMotionSendValues(){
       if(isDmp[4] == true) {
         switch (sensorTypeIdentifier[4]) {
               case 16:
-                secondDataByte[4] = mapfloat(ypr[2], dmpMaxInValue[4], dmpMinInValue[4], minOutValue[4], maxOutValue[4]);
+                patchValue[4] = mapfloat(ypr[2], dmpMaxInValue[4], dmpMinInValue[4], minOutValue[4], maxOutValue[4]);
                 break;
               case 17:
-                secondDataByte[4] = mapfloat(ypr[1], dmpMaxInValue[4], dmpMinInValue[4], minOutValue[4], maxOutValue[4]);
+                patchValue[4] = mapfloat(ypr[1], dmpMaxInValue[4], dmpMinInValue[4], minOutValue[4], maxOutValue[4]);
                 break;
               case 18: 
-                secondDataByte[4] = mapfloat(ypr[0], dmpMaxInValue[4], dmpMinInValue[4], minOutValue[4], maxOutValue[4]);
+                patchValue[4] = mapfloat(ypr[0], dmpMaxInValue[4], dmpMinInValue[4], minOutValue[4], maxOutValue[4]);
                 break;
               case 19:
-                secondDataByte[4] = mapfloat(ypr[2], dmpMaxInValue[4], dmpMinInValue[4], minOutValue[4], maxOutValue[4]);
+                patchValue[4] = mapfloat(ypr[2], dmpMaxInValue[4], dmpMinInValue[4], minOutValue[4], maxOutValue[4]);
                 break;
               case 20: 
-                secondDataByte[4] = mapfloat(ypr[1], dmpMaxInValue[4], dmpMinInValue[4], minOutValue[4], maxOutValue[4]);
+                patchValue[4] = mapfloat(ypr[1], dmpMaxInValue[4], dmpMinInValue[4], minOutValue[4], maxOutValue[4]);
                 break;
               case 21:
-                secondDataByte[4] = mapfloat(ypr[0], dmpMaxInValue[4], dmpMinInValue[4], minOutValue[4], maxOutValue[4]);
+                patchValue[4] = mapfloat(ypr[0], dmpMaxInValue[4], dmpMinInValue[4], minOutValue[4], maxOutValue[4]);
                 break;
         }
-        secondDataByte[4] = constrain(secondDataByte[4], minOutValue[4], maxOutValue[4]);
+        patchValue[4] = constrain(patchValue[4], minOutValue[4], maxOutValue[4]);
         switch (commandIdentifier[4]) {
               case 1: 
                 if(isMidiOut1[4] == true) {
                   // send command via MIDI Out 1
-                  midiA.sendControlChange(firstDataByte[4], secondDataByte[4], midiChan[4]);
+                  midiA.sendControlChange(ctrlrNrA[4], patchValue[4], midiChan[4]);
                 }
                 else {
                   //send command via MIDI Out 2
                   digitalWrite(out2LED, HIGH);
-                  midiB.sendControlChange(firstDataByte[4], secondDataByte[4], midiChan[4]);
+                  midiB.sendControlChange(ctrlrNrA[4], patchValue[4], midiChan[4]);
                   digitalWrite(out2LED, LOW);
                 }
                 break;
               case 2:
                 if(isMidiOut1[4] == true) {
-                  midiA.sendControlChange(nrpnMsb, firstDataByte[4], midiChan[4]);
-                  midiA.sendControlChange(nrpnLsb, firstDataByteB[4], midiChan[4]);
-                  midiA.sendControlChange(6, secondDataByte[4] / nrpnDivisor, midiChan[4]);
-                  midiA.sendControlChange(38, secondDataByte[4] % nrpnDivisor, midiChan[4]);
+                  midiA.sendControlChange(nrpnMsb, ctrlrNrA[4], midiChan[4]);
+                  midiA.sendControlChange(nrpnLsb, ctrlrNrB[4], midiChan[4]);
+                  midiA.sendControlChange(6, patchValue[4] / nrpnDivisor, midiChan[4]);
+                  midiA.sendControlChange(38, patchValue[4] % nrpnDivisor, midiChan[4]);
                 }
                 else {
                   //send command via MIDI Out 2
                   digitalWrite(out2LED, HIGH);
-                  midiB.sendControlChange(nrpnMsb, firstDataByte[4], midiChan[4]);
-                  midiB.sendControlChange(nrpnLsb, firstDataByteB[4], midiChan[4]);
-                  midiB.sendControlChange(6, secondDataByte[4] / nrpnDivisor, midiChan[4]);
-                  midiB.sendControlChange(38, secondDataByte[4] % nrpnDivisor, midiChan[4]);
+                  midiB.sendControlChange(nrpnMsb, ctrlrNrA[4], midiChan[4]);
+                  midiB.sendControlChange(nrpnLsb, ctrlrNrB[4], midiChan[4]);
+                  midiB.sendControlChange(6, patchValue[4] / nrpnDivisor, midiChan[4]);
+                  midiB.sendControlChange(38, patchValue[4] % nrpnDivisor, midiChan[4]);
                   digitalWrite(out2LED, LOW);
                 }
                 break;
               case 3:
                 if(isMidiOut1[4] == true) {
-                  midiA.sendControlChange(rpnMsb, firstDataByte[4], midiChan[4]);
-                  midiA.sendControlChange(rpnLsb, firstDataByteB[4], midiChan[4]);
-                  midiA.sendControlChange(6, secondDataByte[4] / nrpnDivisor, midiChan[4]);
-                  midiA.sendControlChange(38, secondDataByte[4] % nrpnDivisor, midiChan[4]);
+                  midiA.sendControlChange(rpnMsb, ctrlrNrA[4], midiChan[4]);
+                  midiA.sendControlChange(rpnLsb, ctrlrNrB[4], midiChan[4]);
+                  midiA.sendControlChange(6, patchValue[4] / nrpnDivisor, midiChan[4]);
+                  midiA.sendControlChange(38, patchValue[4] % nrpnDivisor, midiChan[4]);
                 }
                 else {
                   //send command via MIDI Out 2
                   digitalWrite(out2LED, HIGH);
-                  midiB.sendControlChange(rpnMsb, firstDataByte[4], midiChan[4]);
-                  midiB.sendControlChange(rpnLsb, firstDataByteB[4], midiChan[4]);
-                  midiB.sendControlChange(6, secondDataByte[4] / nrpnDivisor, midiChan[4]);
-                  midiB.sendControlChange(38, secondDataByte[4] % nrpnDivisor, midiChan[4]);
+                  midiB.sendControlChange(rpnMsb, ctrlrNrA[4], midiChan[4]);
+                  midiB.sendControlChange(rpnLsb, ctrlrNrB[4], midiChan[4]);
+                  midiB.sendControlChange(6, patchValue[4] / nrpnDivisor, midiChan[4]);
+                  midiB.sendControlChange(38, patchValue[4] % nrpnDivisor, midiChan[4]);
                   digitalWrite(out2LED, LOW);
                 }
                 break;
               case 4:
                 if(isMidiOut1[4] == true) {
-                  midiA.sendControlChange(nrpnMsb, firstDataByte[4], midiChan[4]);
-                  midiA.sendControlChange(nrpnLsb, firstDataByteB[4], midiChan[4]);
-                  midiA.sendControlChange(6, secondDataByte[4], midiChan[4]);
+                  midiA.sendControlChange(nrpnMsb, ctrlrNrA[4], midiChan[4]);
+                  midiA.sendControlChange(nrpnLsb, ctrlrNrB[4], midiChan[4]);
+                  midiA.sendControlChange(6, patchValue[4], midiChan[4]);
                 }
                 else {
                   //send command via MIDI Out 2
                   digitalWrite(out2LED, HIGH);
-                  midiB.sendControlChange(nrpnMsb, firstDataByte[4], midiChan[4]);
-                  midiB.sendControlChange(nrpnLsb, firstDataByteB[4], midiChan[4]);
-                  midiB.sendControlChange(6, secondDataByte[4], midiChan[4]);
+                  midiB.sendControlChange(nrpnMsb, ctrlrNrA[4], midiChan[4]);
+                  midiB.sendControlChange(nrpnLsb, ctrlrNrB[4], midiChan[4]);
+                  midiB.sendControlChange(6, patchValue[4], midiChan[4]);
                   digitalWrite(out2LED, LOW);
                 }
                 break;
               case 5: 
                 if(isMidiOut1[4] == true) {
                   // send command via MIDI Out 1
-                  midiA.sendControlChange(firstDataByte[4], secondDataByte[4] / nrpnDivisor, midiChan[4]);
-                  midiA.sendControlChange(firstDataByteB[4], secondDataByte[4] % nrpnDivisor, midiChan[4]);
+                  midiA.sendControlChange(ctrlrNrA[4], patchValue[4] / nrpnDivisor, midiChan[4]);
+                  midiA.sendControlChange(ctrlrNrB[4], patchValue[4] % nrpnDivisor, midiChan[4]);
                 }
                 else {
                   //send command via MIDI Out 2
                   digitalWrite(out2LED, HIGH);
-                  midiB.sendControlChange(firstDataByte[4], secondDataByte[4] / nrpnDivisor, midiChan[4]);
-                  midiB.sendControlChange(firstDataByteB[4], secondDataByte[4] % nrpnDivisor, midiChan[4]);
+                  midiB.sendControlChange(ctrlrNrA[4], patchValue[4] / nrpnDivisor, midiChan[4]);
+                  midiB.sendControlChange(ctrlrNrB[4], patchValue[4] % nrpnDivisor, midiChan[4]);
                   digitalWrite(out2LED, LOW);
                 }
                 break;
               case 6:
                 // CV OUT 1
-                dac.outputA(secondDataByte[4]);                
+                dac.outputA(patchValue[4]);                
                 break;
               case 7:
-                dac.outputB(secondDataByte[4]);                
+                dac.outputB(patchValue[4]);                
                 break;
               case 8:
-                dac2.outputA(secondDataByte[4]);                
+                dac2.outputA(patchValue[4]);                
                 break;
               case 9:
-                dac2.outputB(secondDataByte[4]);                
+                dac2.outputB(patchValue[4]);                
                 break;
               case 10:
-                dac3.outputA(secondDataByte[4]);                
+                dac3.outputA(patchValue[4]);                
                 break;
               case 11:
-                dac3.outputB(secondDataByte[4]);                
+                dac3.outputB(patchValue[4]);                
                 break;
               case 12:
-                dac4.outputA(secondDataByte[4]);                
+                dac4.outputA(patchValue[4]);                
                 break;
               case 13:
-                dac4.outputB(secondDataByte[4]);                
+                dac4.outputB(patchValue[4]);                
                 break;
         }
       }
@@ -7069,125 +7089,125 @@ void calculateMotionSendValues(){
       if(isDmp[5] == true) {
         switch (sensorTypeIdentifier[5]) {
               case 16:
-                secondDataByte[5] = mapfloat(ypr[2], dmpMaxInValue[5], dmpMinInValue[5], minOutValue[5], maxOutValue[5]);
+                patchValue[5] = mapfloat(ypr[2], dmpMaxInValue[5], dmpMinInValue[5], minOutValue[5], maxOutValue[5]);
                 break;
               case 17:
-                secondDataByte[5] = mapfloat(ypr[1], dmpMaxInValue[5], dmpMinInValue[5], minOutValue[5], maxOutValue[5]);
+                patchValue[5] = mapfloat(ypr[1], dmpMaxInValue[5], dmpMinInValue[5], minOutValue[5], maxOutValue[5]);
                 break;
               case 18: 
-                secondDataByte[5] = mapfloat(ypr[0], dmpMaxInValue[5], dmpMinInValue[5], minOutValue[5], maxOutValue[5]);
+                patchValue[5] = mapfloat(ypr[0], dmpMaxInValue[5], dmpMinInValue[5], minOutValue[5], maxOutValue[5]);
                 break;
               case 19:
-                secondDataByte[5] = mapfloat(ypr[2], dmpMaxInValue[5], dmpMinInValue[5], minOutValue[5], maxOutValue[5]);
+                patchValue[5] = mapfloat(ypr[2], dmpMaxInValue[5], dmpMinInValue[5], minOutValue[5], maxOutValue[5]);
                 break;
               case 20: 
-                secondDataByte[5] = mapfloat(ypr[1], dmpMaxInValue[5], dmpMinInValue[5], minOutValue[5], maxOutValue[5]);
+                patchValue[5] = mapfloat(ypr[1], dmpMaxInValue[5], dmpMinInValue[5], minOutValue[5], maxOutValue[5]);
                 break;
               case 21:
-                secondDataByte[5] = mapfloat(ypr[0], dmpMaxInValue[5], dmpMinInValue[5], minOutValue[5], maxOutValue[5]);
+                patchValue[5] = mapfloat(ypr[0], dmpMaxInValue[5], dmpMinInValue[5], minOutValue[5], maxOutValue[5]);
                 break;
         }
-        secondDataByte[5] = constrain(secondDataByte[5], minOutValue[5], maxOutValue[5]);
+        patchValue[5] = constrain(patchValue[5], minOutValue[5], maxOutValue[5]);
         switch (commandIdentifier[5]) {
               case 1: 
                 if(isMidiOut1[5] == true) {
                   // send command via MIDI Out 1
-                  midiA.sendControlChange(firstDataByte[5], secondDataByte[5], midiChan[5]);
+                  midiA.sendControlChange(ctrlrNrA[5], patchValue[5], midiChan[5]);
                 }
                 else {
                   //send command via MIDI Out 2
                   digitalWrite(out2LED, HIGH);
-                  midiB.sendControlChange(firstDataByte[5], secondDataByte[5], midiChan[5]);
+                  midiB.sendControlChange(ctrlrNrA[5], patchValue[5], midiChan[5]);
                   digitalWrite(out2LED, LOW);
                 }
                 break;
               case 2:
                 if(isMidiOut1[5] == true) {
-                  midiA.sendControlChange(nrpnMsb, firstDataByte[5], midiChan[5]);
-                  midiA.sendControlChange(nrpnLsb, firstDataByteB[5], midiChan[5]);
-                  midiA.sendControlChange(6, secondDataByte[5] / nrpnDivisor, midiChan[5]);
-                  midiA.sendControlChange(38, secondDataByte[5] % nrpnDivisor, midiChan[5]);
+                  midiA.sendControlChange(nrpnMsb, ctrlrNrA[5], midiChan[5]);
+                  midiA.sendControlChange(nrpnLsb, ctrlrNrB[5], midiChan[5]);
+                  midiA.sendControlChange(6, patchValue[5] / nrpnDivisor, midiChan[5]);
+                  midiA.sendControlChange(38, patchValue[5] % nrpnDivisor, midiChan[5]);
                 }
                 else {
                   //send command via MIDI Out 2
                   digitalWrite(out2LED, HIGH);
-                  midiB.sendControlChange(nrpnMsb, firstDataByte[5], midiChan[5]);
-                  midiB.sendControlChange(nrpnLsb, firstDataByteB[5], midiChan[5]);
-                  midiB.sendControlChange(6, secondDataByte[5] / nrpnDivisor, midiChan[5]);
-                  midiB.sendControlChange(38, secondDataByte[5] % nrpnDivisor, midiChan[5]);
+                  midiB.sendControlChange(nrpnMsb, ctrlrNrA[5], midiChan[5]);
+                  midiB.sendControlChange(nrpnLsb, ctrlrNrB[5], midiChan[5]);
+                  midiB.sendControlChange(6, patchValue[5] / nrpnDivisor, midiChan[5]);
+                  midiB.sendControlChange(38, patchValue[5] % nrpnDivisor, midiChan[5]);
                   digitalWrite(out2LED, LOW);
                 }
                 break;
               case 3:
                 if(isMidiOut1[5] == true) {
-                  midiA.sendControlChange(rpnMsb, firstDataByte[5], midiChan[5]);
-                  midiA.sendControlChange(rpnLsb, firstDataByteB[5], midiChan[5]);
-                  midiA.sendControlChange(6, secondDataByte[5] / nrpnDivisor, midiChan[5]);
-                  midiA.sendControlChange(38, secondDataByte[5] % nrpnDivisor, midiChan[5]);
+                  midiA.sendControlChange(rpnMsb, ctrlrNrA[5], midiChan[5]);
+                  midiA.sendControlChange(rpnLsb, ctrlrNrB[5], midiChan[5]);
+                  midiA.sendControlChange(6, patchValue[5] / nrpnDivisor, midiChan[5]);
+                  midiA.sendControlChange(38, patchValue[5] % nrpnDivisor, midiChan[5]);
                 }
                 else {
                   //send command via MIDI Out 2
                   digitalWrite(out2LED, HIGH);
-                  midiB.sendControlChange(rpnMsb, firstDataByte[5], midiChan[5]);
-                  midiB.sendControlChange(rpnLsb, firstDataByteB[5], midiChan[5]);
-                  midiB.sendControlChange(6, secondDataByte[5] / nrpnDivisor, midiChan[5]);
-                  midiB.sendControlChange(38, secondDataByte[5] % nrpnDivisor, midiChan[5]);
+                  midiB.sendControlChange(rpnMsb, ctrlrNrA[5], midiChan[5]);
+                  midiB.sendControlChange(rpnLsb, ctrlrNrB[5], midiChan[5]);
+                  midiB.sendControlChange(6, patchValue[5] / nrpnDivisor, midiChan[5]);
+                  midiB.sendControlChange(38, patchValue[5] % nrpnDivisor, midiChan[5]);
                   digitalWrite(out2LED, LOW);
                 }
                 break;
               case 4:
                 if(isMidiOut1[5] == true) {
-                  midiA.sendControlChange(nrpnMsb, firstDataByte[5], midiChan[5]);
-                  midiA.sendControlChange(nrpnLsb, firstDataByteB[5], midiChan[5]);
-                  midiA.sendControlChange(6, secondDataByte[5], midiChan[5]);
+                  midiA.sendControlChange(nrpnMsb, ctrlrNrA[5], midiChan[5]);
+                  midiA.sendControlChange(nrpnLsb, ctrlrNrB[5], midiChan[5]);
+                  midiA.sendControlChange(6, patchValue[5], midiChan[5]);
                 }
                 else {
                   //send command via MIDI Out 2
                   digitalWrite(out2LED, HIGH);
-                  midiB.sendControlChange(nrpnMsb, firstDataByte[5], midiChan[5]);
-                  midiB.sendControlChange(nrpnLsb, firstDataByteB[5], midiChan[5]);
-                  midiB.sendControlChange(6, secondDataByte[5], midiChan[5]);
+                  midiB.sendControlChange(nrpnMsb, ctrlrNrA[5], midiChan[5]);
+                  midiB.sendControlChange(nrpnLsb, ctrlrNrB[5], midiChan[5]);
+                  midiB.sendControlChange(6, patchValue[5], midiChan[5]);
                   digitalWrite(out2LED, LOW);
                 }
                 break;
               case 5: 
                 if(isMidiOut1[5] == true) {
                   // send command via MIDI Out 1
-                  midiA.sendControlChange(firstDataByte[5], secondDataByte[5] / nrpnDivisor, midiChan[5]);
-                  midiA.sendControlChange(firstDataByteB[5], secondDataByte[5] % nrpnDivisor, midiChan[5]);
+                  midiA.sendControlChange(ctrlrNrA[5], patchValue[5] / nrpnDivisor, midiChan[5]);
+                  midiA.sendControlChange(ctrlrNrB[5], patchValue[5] % nrpnDivisor, midiChan[5]);
                 }
                 else {
                   //send command via MIDI Out 2
                   digitalWrite(out2LED, HIGH);
-                  midiB.sendControlChange(firstDataByte[5], secondDataByte[5] / nrpnDivisor, midiChan[5]);
-                  midiB.sendControlChange(firstDataByteB[5], secondDataByte[5] % nrpnDivisor, midiChan[5]);
+                  midiB.sendControlChange(ctrlrNrA[5], patchValue[5] / nrpnDivisor, midiChan[5]);
+                  midiB.sendControlChange(ctrlrNrB[5], patchValue[5] % nrpnDivisor, midiChan[5]);
                   digitalWrite(out2LED, LOW);
                 }
                 break;
               case 6:
                 // CV OUT 1
-                dac.outputA(secondDataByte[5]);                
+                dac.outputA(patchValue[5]);                
                 break;
               case 7:
-                dac.outputB(secondDataByte[5]);                
+                dac.outputB(patchValue[5]);                
                 break;
               case 8:
-                dac2.outputA(secondDataByte[5]);                
+                dac2.outputA(patchValue[5]);                
                 break;
               case 9:
-                dac2.outputB(secondDataByte[5]);                
+                dac2.outputB(patchValue[5]);                
                 break;
               case 10:
-                dac3.outputA(secondDataByte[5]);                
+                dac3.outputA(patchValue[5]);                
                 break;
               case 11:
-                dac3.outputB(secondDataByte[5]);                
+                dac3.outputB(patchValue[5]);                
                 break;
               case 12:
-                dac4.outputA(secondDataByte[5]);                
+                dac4.outputA(patchValue[5]);                
                 break;
               case 13:
-                dac4.outputB(secondDataByte[5]);                
+                dac4.outputB(patchValue[5]);                
                 break;
         }
       }
@@ -7196,125 +7216,125 @@ void calculateMotionSendValues(){
       if(isDmp[6] == true) {
         switch (sensorTypeIdentifier[6]) {
               case 16:
-                secondDataByte[6] = mapfloat(ypr[2], dmpMaxInValue[6], dmpMinInValue[6], minOutValue[6], maxOutValue[6]);
+                patchValue[6] = mapfloat(ypr[2], dmpMaxInValue[6], dmpMinInValue[6], minOutValue[6], maxOutValue[6]);
                 break;
               case 17:
-                secondDataByte[6] = mapfloat(ypr[1], dmpMaxInValue[6], dmpMinInValue[6], minOutValue[6], maxOutValue[6]);
+                patchValue[6] = mapfloat(ypr[1], dmpMaxInValue[6], dmpMinInValue[6], minOutValue[6], maxOutValue[6]);
                 break;
               case 18: 
-                secondDataByte[6] = mapfloat(ypr[0], dmpMaxInValue[6], dmpMinInValue[6], minOutValue[6], maxOutValue[6]);
+                patchValue[6] = mapfloat(ypr[0], dmpMaxInValue[6], dmpMinInValue[6], minOutValue[6], maxOutValue[6]);
                 break;
               case 19:
-                secondDataByte[6] = mapfloat(ypr[2], dmpMaxInValue[6], dmpMinInValue[6], minOutValue[6], maxOutValue[6]);
+                patchValue[6] = mapfloat(ypr[2], dmpMaxInValue[6], dmpMinInValue[6], minOutValue[6], maxOutValue[6]);
                 break;
               case 20: 
-                secondDataByte[6] = mapfloat(ypr[1], dmpMaxInValue[6], dmpMinInValue[6], minOutValue[6], maxOutValue[6]);
+                patchValue[6] = mapfloat(ypr[1], dmpMaxInValue[6], dmpMinInValue[6], minOutValue[6], maxOutValue[6]);
                 break;
               case 21:
-                secondDataByte[6] = mapfloat(ypr[0], dmpMaxInValue[6], dmpMinInValue[6], minOutValue[6], maxOutValue[6]);
+                patchValue[6] = mapfloat(ypr[0], dmpMaxInValue[6], dmpMinInValue[6], minOutValue[6], maxOutValue[6]);
                 break;
         }
-        secondDataByte[6] = constrain(secondDataByte[6], minOutValue[6], maxOutValue[6]);
+        patchValue[6] = constrain(patchValue[6], minOutValue[6], maxOutValue[6]);
         switch (commandIdentifier[6]) {
               case 1: 
                 if(isMidiOut1[6] == true) {
                   // send command via MIDI Out 1
-                  midiA.sendControlChange(firstDataByte[6], secondDataByte[6], midiChan[6]);
+                  midiA.sendControlChange(ctrlrNrA[6], patchValue[6], midiChan[6]);
                 }
                 else {
                   //send command via MIDI Out 2
                   digitalWrite(out2LED, HIGH);
-                  midiB.sendControlChange(firstDataByte[6], secondDataByte[6], midiChan[6]);
+                  midiB.sendControlChange(ctrlrNrA[6], patchValue[6], midiChan[6]);
                   digitalWrite(out2LED, LOW);
                 }
                 break;
               case 2:
                 if(isMidiOut1[6] == true) {
-                  midiA.sendControlChange(nrpnMsb, firstDataByte[6], midiChan[6]);
-                  midiA.sendControlChange(nrpnLsb, firstDataByteB[6], midiChan[6]);
-                  midiA.sendControlChange(6, secondDataByte[6] / nrpnDivisor, midiChan[6]);
-                  midiA.sendControlChange(38, secondDataByte[6] % nrpnDivisor, midiChan[6]);
+                  midiA.sendControlChange(nrpnMsb, ctrlrNrA[6], midiChan[6]);
+                  midiA.sendControlChange(nrpnLsb, ctrlrNrB[6], midiChan[6]);
+                  midiA.sendControlChange(6, patchValue[6] / nrpnDivisor, midiChan[6]);
+                  midiA.sendControlChange(38, patchValue[6] % nrpnDivisor, midiChan[6]);
                 }
                 else {
                   //send command via MIDI Out 2
                   digitalWrite(out2LED, HIGH);
-                  midiB.sendControlChange(nrpnMsb, firstDataByte[6], midiChan[6]);
-                  midiB.sendControlChange(nrpnLsb, firstDataByteB[6], midiChan[6]);
-                  midiB.sendControlChange(6, secondDataByte[6] / nrpnDivisor, midiChan[6]);
-                  midiB.sendControlChange(38, secondDataByte[6] % nrpnDivisor, midiChan[6]);
+                  midiB.sendControlChange(nrpnMsb, ctrlrNrA[6], midiChan[6]);
+                  midiB.sendControlChange(nrpnLsb, ctrlrNrB[6], midiChan[6]);
+                  midiB.sendControlChange(6, patchValue[6] / nrpnDivisor, midiChan[6]);
+                  midiB.sendControlChange(38, patchValue[6] % nrpnDivisor, midiChan[6]);
                   digitalWrite(out2LED, LOW);
                 }
                 break;
               case 3:
                 if(isMidiOut1[6] == true) {
-                  midiA.sendControlChange(rpnMsb, firstDataByte[6], midiChan[6]);
-                  midiA.sendControlChange(rpnLsb, firstDataByteB[6], midiChan[6]);
-                  midiA.sendControlChange(6, secondDataByte[6] / nrpnDivisor, midiChan[6]);
-                  midiA.sendControlChange(38, secondDataByte[6] % nrpnDivisor, midiChan[6]);
+                  midiA.sendControlChange(rpnMsb, ctrlrNrA[6], midiChan[6]);
+                  midiA.sendControlChange(rpnLsb, ctrlrNrB[6], midiChan[6]);
+                  midiA.sendControlChange(6, patchValue[6] / nrpnDivisor, midiChan[6]);
+                  midiA.sendControlChange(38, patchValue[6] % nrpnDivisor, midiChan[6]);
                 }
                 else {
                   //send command via MIDI Out 2
                   digitalWrite(out2LED, HIGH);
-                  midiB.sendControlChange(rpnMsb, firstDataByte[6], midiChan[6]);
-                  midiB.sendControlChange(rpnLsb, firstDataByteB[6], midiChan[6]);
-                  midiB.sendControlChange(6, secondDataByte[6] / nrpnDivisor, midiChan[6]);
-                  midiB.sendControlChange(38, secondDataByte[6] % nrpnDivisor, midiChan[6]);
+                  midiB.sendControlChange(rpnMsb, ctrlrNrA[6], midiChan[6]);
+                  midiB.sendControlChange(rpnLsb, ctrlrNrB[6], midiChan[6]);
+                  midiB.sendControlChange(6, patchValue[6] / nrpnDivisor, midiChan[6]);
+                  midiB.sendControlChange(38, patchValue[6] % nrpnDivisor, midiChan[6]);
                   digitalWrite(out2LED, LOW);
                 }
                 break;
               case 4:
                 if(isMidiOut1[6] == true) {
-                  midiA.sendControlChange(nrpnMsb, firstDataByte[6], midiChan[6]);
-                  midiA.sendControlChange(nrpnLsb, firstDataByteB[6], midiChan[6]);
-                  midiA.sendControlChange(6, secondDataByte[6], midiChan[6]);
+                  midiA.sendControlChange(nrpnMsb, ctrlrNrA[6], midiChan[6]);
+                  midiA.sendControlChange(nrpnLsb, ctrlrNrB[6], midiChan[6]);
+                  midiA.sendControlChange(6, patchValue[6], midiChan[6]);
                 }
                 else {
                   //send command via MIDI Out 2
                   digitalWrite(out2LED, HIGH);
-                  midiB.sendControlChange(nrpnMsb, firstDataByte[6], midiChan[6]);
-                  midiB.sendControlChange(nrpnLsb, firstDataByteB[6], midiChan[6]);
-                  midiB.sendControlChange(6, secondDataByte[6], midiChan[6]);
+                  midiB.sendControlChange(nrpnMsb, ctrlrNrA[6], midiChan[6]);
+                  midiB.sendControlChange(nrpnLsb, ctrlrNrB[6], midiChan[6]);
+                  midiB.sendControlChange(6, patchValue[6], midiChan[6]);
                   digitalWrite(out2LED, LOW);
                 }
                 break;
               case 5: 
                 if(isMidiOut1[6] == true) {
                   // send command via MIDI Out 1
-                  midiA.sendControlChange(firstDataByte[6], secondDataByte[6] / nrpnDivisor, midiChan[6]);
-                  midiA.sendControlChange(firstDataByteB[6], secondDataByte[6] % nrpnDivisor, midiChan[6]);
+                  midiA.sendControlChange(ctrlrNrA[6], patchValue[6] / nrpnDivisor, midiChan[6]);
+                  midiA.sendControlChange(ctrlrNrB[6], patchValue[6] % nrpnDivisor, midiChan[6]);
                 }
                 else {
                   //send command via MIDI Out 2
                   digitalWrite(out2LED, HIGH);
-                  midiB.sendControlChange(firstDataByte[6], secondDataByte[6] / nrpnDivisor, midiChan[6]);
-                  midiB.sendControlChange(firstDataByteB[6], secondDataByte[6] % nrpnDivisor, midiChan[6]);
+                  midiB.sendControlChange(ctrlrNrA[6], patchValue[6] / nrpnDivisor, midiChan[6]);
+                  midiB.sendControlChange(ctrlrNrB[6], patchValue[6] % nrpnDivisor, midiChan[6]);
                   digitalWrite(out2LED, LOW);
                 }
                 break;
               case 6:
                 // CV OUT 1
-                dac.outputA(secondDataByte[6]);                
+                dac.outputA(patchValue[6]);                
                 break;
               case 7:
-                dac.outputB(secondDataByte[6]);                
+                dac.outputB(patchValue[6]);                
                 break;
               case 8:
-                dac2.outputA(secondDataByte[6]);                
+                dac2.outputA(patchValue[6]);                
                 break;
               case 9:
-                dac2.outputB(secondDataByte[6]);                
+                dac2.outputB(patchValue[6]);                
                 break;
               case 10:
-                dac3.outputA(secondDataByte[6]);                
+                dac3.outputA(patchValue[6]);                
                 break;
               case 11:
-                dac3.outputB(secondDataByte[6]);                
+                dac3.outputB(patchValue[6]);                
                 break;
               case 12:
-                dac4.outputA(secondDataByte[6]);                
+                dac4.outputA(patchValue[6]);                
                 break;
               case 13:
-                dac4.outputB(secondDataByte[6]);                
+                dac4.outputB(patchValue[6]);                
                 break;
         }
       }
@@ -7323,125 +7343,125 @@ void calculateMotionSendValues(){
       if(isDmp[7] == true) {
         switch (sensorTypeIdentifier[7]) {
               case 16:
-                secondDataByte[7] = mapfloat(ypr[2], dmpMaxInValue[7], dmpMinInValue[7], minOutValue[7], maxOutValue[7]);
+                patchValue[7] = mapfloat(ypr[2], dmpMaxInValue[7], dmpMinInValue[7], minOutValue[7], maxOutValue[7]);
                 break;
               case 17:
-                secondDataByte[7] = mapfloat(ypr[1], dmpMaxInValue[7], dmpMinInValue[7], minOutValue[7], maxOutValue[7]);
+                patchValue[7] = mapfloat(ypr[1], dmpMaxInValue[7], dmpMinInValue[7], minOutValue[7], maxOutValue[7]);
                 break;
               case 18: 
-                secondDataByte[7] = mapfloat(ypr[0], dmpMaxInValue[7], dmpMinInValue[7], minOutValue[7], maxOutValue[7]);
+                patchValue[7] = mapfloat(ypr[0], dmpMaxInValue[7], dmpMinInValue[7], minOutValue[7], maxOutValue[7]);
                 break;
               case 19:
-                secondDataByte[7] = mapfloat(ypr[2], dmpMaxInValue[7], dmpMinInValue[7], minOutValue[7], maxOutValue[7]);
+                patchValue[7] = mapfloat(ypr[2], dmpMaxInValue[7], dmpMinInValue[7], minOutValue[7], maxOutValue[7]);
                 break;
               case 20: 
-                secondDataByte[7] = mapfloat(ypr[1], dmpMaxInValue[7], dmpMinInValue[7], minOutValue[7], maxOutValue[7]);
+                patchValue[7] = mapfloat(ypr[1], dmpMaxInValue[7], dmpMinInValue[7], minOutValue[7], maxOutValue[7]);
                 break;
               case 21:
-                secondDataByte[7] = mapfloat(ypr[0], dmpMaxInValue[7], dmpMinInValue[7], minOutValue[7], maxOutValue[7]);
+                patchValue[7] = mapfloat(ypr[0], dmpMaxInValue[7], dmpMinInValue[7], minOutValue[7], maxOutValue[7]);
                 break;
         }
-        secondDataByte[7] = constrain(secondDataByte[7], minOutValue[7], maxOutValue[7]);
+        patchValue[7] = constrain(patchValue[7], minOutValue[7], maxOutValue[7]);
         switch (commandIdentifier[7]) {
               case 1: 
                 if(isMidiOut1[7] == true) {
                   // send command via MIDI Out 1
-                  midiA.sendControlChange(firstDataByte[7], secondDataByte[7], midiChan[7]);
+                  midiA.sendControlChange(ctrlrNrA[7], patchValue[7], midiChan[7]);
                 }
                 else {
                   //send command via MIDI Out 2
                   digitalWrite(out2LED, HIGH);
-                  midiB.sendControlChange(firstDataByte[7], secondDataByte[7], midiChan[7]);
+                  midiB.sendControlChange(ctrlrNrA[7], patchValue[7], midiChan[7]);
                   digitalWrite(out2LED, LOW);
                 }
                 break;
               case 2:
                 if(isMidiOut1[7] == true) {
-                  midiA.sendControlChange(nrpnMsb, firstDataByte[7], midiChan[7]);
-                  midiA.sendControlChange(nrpnLsb, firstDataByteB[7], midiChan[7]);
-                  midiA.sendControlChange(6, secondDataByte[7] / nrpnDivisor, midiChan[7]);
-                  midiA.sendControlChange(38, secondDataByte[7] % nrpnDivisor, midiChan[7]);
+                  midiA.sendControlChange(nrpnMsb, ctrlrNrA[7], midiChan[7]);
+                  midiA.sendControlChange(nrpnLsb, ctrlrNrB[7], midiChan[7]);
+                  midiA.sendControlChange(6, patchValue[7] / nrpnDivisor, midiChan[7]);
+                  midiA.sendControlChange(38, patchValue[7] % nrpnDivisor, midiChan[7]);
                 }
                 else {
                   //send command via MIDI Out 2
                   digitalWrite(out2LED, HIGH);
-                  midiB.sendControlChange(nrpnMsb, firstDataByte[7], midiChan[7]);
-                  midiB.sendControlChange(nrpnLsb, firstDataByteB[7], midiChan[7]);
-                  midiB.sendControlChange(6, secondDataByte[7] / nrpnDivisor, midiChan[7]);
-                  midiB.sendControlChange(38, secondDataByte[7] % nrpnDivisor, midiChan[7]);
+                  midiB.sendControlChange(nrpnMsb, ctrlrNrA[7], midiChan[7]);
+                  midiB.sendControlChange(nrpnLsb, ctrlrNrB[7], midiChan[7]);
+                  midiB.sendControlChange(6, patchValue[7] / nrpnDivisor, midiChan[7]);
+                  midiB.sendControlChange(38, patchValue[7] % nrpnDivisor, midiChan[7]);
                   digitalWrite(out2LED, LOW);
                 }
                 break;
               case 3:
                 if(isMidiOut1[7] == true) {
-                  midiA.sendControlChange(rpnMsb, firstDataByte[7], midiChan[7]);
-                  midiA.sendControlChange(rpnLsb, firstDataByteB[7], midiChan[7]);
-                  midiA.sendControlChange(6, secondDataByte[7] / nrpnDivisor, midiChan[7]);
-                  midiA.sendControlChange(38, secondDataByte[7] % nrpnDivisor, midiChan[7]);
+                  midiA.sendControlChange(rpnMsb, ctrlrNrA[7], midiChan[7]);
+                  midiA.sendControlChange(rpnLsb, ctrlrNrB[7], midiChan[7]);
+                  midiA.sendControlChange(6, patchValue[7] / nrpnDivisor, midiChan[7]);
+                  midiA.sendControlChange(38, patchValue[7] % nrpnDivisor, midiChan[7]);
                 }
                 else {
                   //send command via MIDI Out 2
                   digitalWrite(out2LED, HIGH);
-                  midiB.sendControlChange(rpnMsb, firstDataByte[7], midiChan[7]);
-                  midiB.sendControlChange(rpnLsb, firstDataByteB[7], midiChan[7]);
-                  midiB.sendControlChange(6, secondDataByte[7] / nrpnDivisor, midiChan[7]);
-                  midiB.sendControlChange(38, secondDataByte[7] % nrpnDivisor, midiChan[7]);
+                  midiB.sendControlChange(rpnMsb, ctrlrNrA[7], midiChan[7]);
+                  midiB.sendControlChange(rpnLsb, ctrlrNrB[7], midiChan[7]);
+                  midiB.sendControlChange(6, patchValue[7] / nrpnDivisor, midiChan[7]);
+                  midiB.sendControlChange(38, patchValue[7] % nrpnDivisor, midiChan[7]);
                   digitalWrite(out2LED, LOW);
                 }
                 break;
               case 4:
                 if(isMidiOut1[7] == true) {
-                  midiA.sendControlChange(nrpnMsb, firstDataByte[7], midiChan[7]);
-                  midiA.sendControlChange(nrpnLsb, firstDataByteB[7], midiChan[7]);
-                  midiA.sendControlChange(6, secondDataByte[7], midiChan[7]);
+                  midiA.sendControlChange(nrpnMsb, ctrlrNrA[7], midiChan[7]);
+                  midiA.sendControlChange(nrpnLsb, ctrlrNrB[7], midiChan[7]);
+                  midiA.sendControlChange(6, patchValue[7], midiChan[7]);
                 }
                 else {
                   //send command via MIDI Out 2
                   digitalWrite(out2LED, HIGH);
-                  midiB.sendControlChange(nrpnMsb, firstDataByte[7], midiChan[7]);
-                  midiB.sendControlChange(nrpnLsb, firstDataByteB[7], midiChan[7]);
-                  midiB.sendControlChange(6, secondDataByte[7], midiChan[7]);
+                  midiB.sendControlChange(nrpnMsb, ctrlrNrA[7], midiChan[7]);
+                  midiB.sendControlChange(nrpnLsb, ctrlrNrB[7], midiChan[7]);
+                  midiB.sendControlChange(6, patchValue[7], midiChan[7]);
                   digitalWrite(out2LED, LOW);
                 }
                 break;
               case 5: 
                 if(isMidiOut1[7] == true) {
                   // send command via MIDI Out 1
-                  midiA.sendControlChange(firstDataByte[7], secondDataByte[7] / nrpnDivisor, midiChan[7]);
-                  midiA.sendControlChange(firstDataByteB[7], secondDataByte[7] % nrpnDivisor, midiChan[7]);
+                  midiA.sendControlChange(ctrlrNrA[7], patchValue[7] / nrpnDivisor, midiChan[7]);
+                  midiA.sendControlChange(ctrlrNrB[7], patchValue[7] % nrpnDivisor, midiChan[7]);
                 }
                 else {
                   //send command via MIDI Out 2
                   digitalWrite(out2LED, HIGH);
-                  midiB.sendControlChange(firstDataByte[7], secondDataByte[7] / nrpnDivisor, midiChan[7]);
-                  midiB.sendControlChange(firstDataByteB[7], secondDataByte[7] % nrpnDivisor, midiChan[7]);
+                  midiB.sendControlChange(ctrlrNrA[7], patchValue[7] / nrpnDivisor, midiChan[7]);
+                  midiB.sendControlChange(ctrlrNrB[7], patchValue[7] % nrpnDivisor, midiChan[7]);
                   digitalWrite(out2LED, LOW);
                 }
                 break;
               case 6:
                 // CV OUT 1
-                dac.outputA(secondDataByte[7]);                
+                dac.outputA(patchValue[7]);                
                 break;
               case 7:
-                dac.outputB(secondDataByte[7]);                
+                dac.outputB(patchValue[7]);                
                 break;
               case 8:
-                dac2.outputA(secondDataByte[7]);                
+                dac2.outputA(patchValue[7]);                
                 break;
               case 9:
-                dac2.outputB(secondDataByte[7]);                
+                dac2.outputB(patchValue[7]);                
                 break;
               case 10:
-                dac3.outputA(secondDataByte[7]);                
+                dac3.outputA(patchValue[7]);                
                 break;
               case 11:
-                dac3.outputB(secondDataByte[7]);                
+                dac3.outputB(patchValue[7]);                
                 break;
               case 12:
-                dac4.outputA(secondDataByte[7]);                
+                dac4.outputA(patchValue[7]);                
                 break;
               case 13:
-                dac4.outputB(secondDataByte[7]);                
+                dac4.outputB(patchValue[7]);                
                 break;
         }
       }
@@ -7450,125 +7470,125 @@ void calculateMotionSendValues(){
       if(isDmp[8] == true) {
         switch (sensorTypeIdentifier[8]) {
               case 16:
-                secondDataByte[8] = mapfloat(ypr[2], dmpMaxInValue[8], dmpMinInValue[8], minOutValue[8], maxOutValue[8]);
+                patchValue[8] = mapfloat(ypr[2], dmpMaxInValue[8], dmpMinInValue[8], minOutValue[8], maxOutValue[8]);
                 break;
               case 17:
-                secondDataByte[8] = mapfloat(ypr[1], dmpMaxInValue[8], dmpMinInValue[8], minOutValue[8], maxOutValue[8]);
+                patchValue[8] = mapfloat(ypr[1], dmpMaxInValue[8], dmpMinInValue[8], minOutValue[8], maxOutValue[8]);
                 break;
               case 18: 
-                secondDataByte[8] = mapfloat(ypr[0], dmpMaxInValue[8], dmpMinInValue[8], minOutValue[8], maxOutValue[8]);
+                patchValue[8] = mapfloat(ypr[0], dmpMaxInValue[8], dmpMinInValue[8], minOutValue[8], maxOutValue[8]);
                 break;
               case 19:
-                secondDataByte[8] = mapfloat(ypr[2], dmpMaxInValue[8], dmpMinInValue[8], minOutValue[8], maxOutValue[8]);
+                patchValue[8] = mapfloat(ypr[2], dmpMaxInValue[8], dmpMinInValue[8], minOutValue[8], maxOutValue[8]);
                 break;
               case 20: 
-                secondDataByte[8] = mapfloat(ypr[1], dmpMaxInValue[8], dmpMinInValue[8], minOutValue[8], maxOutValue[8]);
+                patchValue[8] = mapfloat(ypr[1], dmpMaxInValue[8], dmpMinInValue[8], minOutValue[8], maxOutValue[8]);
                 break;
               case 21:
-                secondDataByte[8] = mapfloat(ypr[0], dmpMaxInValue[8], dmpMinInValue[8], minOutValue[8], maxOutValue[8]);
+                patchValue[8] = mapfloat(ypr[0], dmpMaxInValue[8], dmpMinInValue[8], minOutValue[8], maxOutValue[8]);
                 break;
         }
-        secondDataByte[8] = constrain(secondDataByte[8], minOutValue[8], maxOutValue[8]);
+        patchValue[8] = constrain(patchValue[8], minOutValue[8], maxOutValue[8]);
         switch (commandIdentifier[8]) {
               case 1: 
                 if(isMidiOut1[8] == true) {
                   // send command via MIDI Out 1
-                  midiA.sendControlChange(firstDataByte[8], secondDataByte[8], midiChan[8]);
+                  midiA.sendControlChange(ctrlrNrA[8], patchValue[8], midiChan[8]);
                 }
                 else {
                   //send command via MIDI Out 2
                   digitalWrite(out2LED, HIGH);
-                  midiB.sendControlChange(firstDataByte[8], secondDataByte[8], midiChan[8]);
+                  midiB.sendControlChange(ctrlrNrA[8], patchValue[8], midiChan[8]);
                   digitalWrite(out2LED, LOW);
                 }
                 break;
               case 2:
                 if(isMidiOut1[8] == true) {
-                  midiA.sendControlChange(nrpnMsb, firstDataByte[8], midiChan[8]);
-                  midiA.sendControlChange(nrpnLsb, firstDataByteB[8], midiChan[8]);
-                  midiA.sendControlChange(6, secondDataByte[8] / nrpnDivisor, midiChan[8]);
-                  midiA.sendControlChange(38, secondDataByte[8] % nrpnDivisor, midiChan[8]);
+                  midiA.sendControlChange(nrpnMsb, ctrlrNrA[8], midiChan[8]);
+                  midiA.sendControlChange(nrpnLsb, ctrlrNrB[8], midiChan[8]);
+                  midiA.sendControlChange(6, patchValue[8] / nrpnDivisor, midiChan[8]);
+                  midiA.sendControlChange(38, patchValue[8] % nrpnDivisor, midiChan[8]);
                 }
                 else {
                   //send command via MIDI Out 2
                   digitalWrite(out2LED, HIGH);
-                  midiB.sendControlChange(nrpnMsb, firstDataByte[8], midiChan[8]);
-                  midiB.sendControlChange(nrpnLsb, firstDataByteB[8], midiChan[8]);
-                  midiB.sendControlChange(6, secondDataByte[8] / nrpnDivisor, midiChan[8]);
-                  midiB.sendControlChange(38, secondDataByte[8] % nrpnDivisor, midiChan[8]);
+                  midiB.sendControlChange(nrpnMsb, ctrlrNrA[8], midiChan[8]);
+                  midiB.sendControlChange(nrpnLsb, ctrlrNrB[8], midiChan[8]);
+                  midiB.sendControlChange(6, patchValue[8] / nrpnDivisor, midiChan[8]);
+                  midiB.sendControlChange(38, patchValue[8] % nrpnDivisor, midiChan[8]);
                   digitalWrite(out2LED, LOW);
                 }
                 break;
               case 3:
                 if(isMidiOut1[8] == true) {
-                  midiA.sendControlChange(rpnMsb, firstDataByte[8], midiChan[8]);
-                  midiA.sendControlChange(rpnLsb, firstDataByteB[8], midiChan[8]);
-                  midiA.sendControlChange(6, secondDataByte[8] / nrpnDivisor, midiChan[8]);
-                  midiA.sendControlChange(38, secondDataByte[8] % nrpnDivisor, midiChan[8]);
+                  midiA.sendControlChange(rpnMsb, ctrlrNrA[8], midiChan[8]);
+                  midiA.sendControlChange(rpnLsb, ctrlrNrB[8], midiChan[8]);
+                  midiA.sendControlChange(6, patchValue[8] / nrpnDivisor, midiChan[8]);
+                  midiA.sendControlChange(38, patchValue[8] % nrpnDivisor, midiChan[8]);
                 }
                 else {
                   //send command via MIDI Out 2
                   digitalWrite(out2LED, HIGH);
-                  midiB.sendControlChange(rpnMsb, firstDataByte[8], midiChan[8]);
-                  midiB.sendControlChange(rpnLsb, firstDataByteB[8], midiChan[8]);
-                  midiB.sendControlChange(6, secondDataByte[8] / nrpnDivisor, midiChan[8]);
-                  midiB.sendControlChange(38, secondDataByte[8] % nrpnDivisor, midiChan[8]);
+                  midiB.sendControlChange(rpnMsb, ctrlrNrA[8], midiChan[8]);
+                  midiB.sendControlChange(rpnLsb, ctrlrNrB[8], midiChan[8]);
+                  midiB.sendControlChange(6, patchValue[8] / nrpnDivisor, midiChan[8]);
+                  midiB.sendControlChange(38, patchValue[8] % nrpnDivisor, midiChan[8]);
                   digitalWrite(out2LED, LOW);
                 }
                 break;
               case 4:
                 if(isMidiOut1[8] == true) {
-                  midiA.sendControlChange(nrpnMsb, firstDataByte[8], midiChan[8]);
-                  midiA.sendControlChange(nrpnLsb, firstDataByteB[8], midiChan[8]);
-                  midiA.sendControlChange(6, secondDataByte[8], midiChan[8]);
+                  midiA.sendControlChange(nrpnMsb, ctrlrNrA[8], midiChan[8]);
+                  midiA.sendControlChange(nrpnLsb, ctrlrNrB[8], midiChan[8]);
+                  midiA.sendControlChange(6, patchValue[8], midiChan[8]);
                 }
                 else {
                   //send command via MIDI Out 2
                   digitalWrite(out2LED, HIGH);
-                  midiB.sendControlChange(nrpnMsb, firstDataByte[8], midiChan[8]);
-                  midiB.sendControlChange(nrpnLsb, firstDataByteB[8], midiChan[8]);
-                  midiB.sendControlChange(6, secondDataByte[8], midiChan[8]);
+                  midiB.sendControlChange(nrpnMsb, ctrlrNrA[8], midiChan[8]);
+                  midiB.sendControlChange(nrpnLsb, ctrlrNrB[8], midiChan[8]);
+                  midiB.sendControlChange(6, patchValue[8], midiChan[8]);
                   digitalWrite(out2LED, LOW);
                 }
                 break;
               case 5: 
                 if(isMidiOut1[8] == true) {
                   // send command via MIDI Out 1
-                  midiA.sendControlChange(firstDataByte[8], secondDataByte[8] / nrpnDivisor, midiChan[8]);
-                  midiA.sendControlChange(firstDataByteB[8], secondDataByte[8] % nrpnDivisor, midiChan[8]);
+                  midiA.sendControlChange(ctrlrNrA[8], patchValue[8] / nrpnDivisor, midiChan[8]);
+                  midiA.sendControlChange(ctrlrNrB[8], patchValue[8] % nrpnDivisor, midiChan[8]);
                 }
                 else {
                   //send command via MIDI Out 2
                   digitalWrite(out2LED, HIGH);
-                  midiB.sendControlChange(firstDataByte[8], secondDataByte[8] / nrpnDivisor, midiChan[8]);
-                  midiB.sendControlChange(firstDataByteB[8], secondDataByte[8] % nrpnDivisor, midiChan[8]);
+                  midiB.sendControlChange(ctrlrNrA[8], patchValue[8] / nrpnDivisor, midiChan[8]);
+                  midiB.sendControlChange(ctrlrNrB[8], patchValue[8] % nrpnDivisor, midiChan[8]);
                   digitalWrite(out2LED, LOW);
                 }
                 break;
               case 6:
                 // CV OUT 1
-                dac.outputA(secondDataByte[8]);                
+                dac.outputA(patchValue[8]);                
                 break;
               case 7:
-                dac.outputB(secondDataByte[8]);                
+                dac.outputB(patchValue[8]);                
                 break;
               case 8:
-                dac2.outputA(secondDataByte[8]);                
+                dac2.outputA(patchValue[8]);                
                 break;
               case 9:
-                dac2.outputB(secondDataByte[8]);                
+                dac2.outputB(patchValue[8]);                
                 break;
               case 10:
-                dac3.outputA(secondDataByte[8]);                
+                dac3.outputA(patchValue[8]);                
                 break;
               case 11:
-                dac3.outputB(secondDataByte[8]);                
+                dac3.outputB(patchValue[8]);                
                 break;
               case 12:
-                dac4.outputA(secondDataByte[8]);                
+                dac4.outputA(patchValue[8]);                
                 break;
               case 13:
-                dac4.outputB(secondDataByte[8]);                
+                dac4.outputB(patchValue[8]);                
                 break;
         }
       }
@@ -7577,125 +7597,125 @@ void calculateMotionSendValues(){
       if(isDmp[9] == true) {
         switch (sensorTypeIdentifier[9]) {
               case 16:
-                secondDataByte[9] = mapfloat(ypr[2], dmpMaxInValue[9], dmpMinInValue[9], minOutValue[9], maxOutValue[9]);
+                patchValue[9] = mapfloat(ypr[2], dmpMaxInValue[9], dmpMinInValue[9], minOutValue[9], maxOutValue[9]);
                 break;
               case 17:
-                secondDataByte[9] = mapfloat(ypr[1], dmpMaxInValue[9], dmpMinInValue[9], minOutValue[9], maxOutValue[9]);
+                patchValue[9] = mapfloat(ypr[1], dmpMaxInValue[9], dmpMinInValue[9], minOutValue[9], maxOutValue[9]);
                 break;
               case 18: 
-                secondDataByte[9] = mapfloat(ypr[0], dmpMaxInValue[9], dmpMinInValue[9], minOutValue[9], maxOutValue[9]);
+                patchValue[9] = mapfloat(ypr[0], dmpMaxInValue[9], dmpMinInValue[9], minOutValue[9], maxOutValue[9]);
                 break;
               case 19:
-                secondDataByte[9] = mapfloat(ypr[2], dmpMaxInValue[9], dmpMinInValue[9], minOutValue[9], maxOutValue[9]);
+                patchValue[9] = mapfloat(ypr[2], dmpMaxInValue[9], dmpMinInValue[9], minOutValue[9], maxOutValue[9]);
                 break;
               case 20: 
-                secondDataByte[9] = mapfloat(ypr[1], dmpMaxInValue[9], dmpMinInValue[9], minOutValue[9], maxOutValue[9]);
+                patchValue[9] = mapfloat(ypr[1], dmpMaxInValue[9], dmpMinInValue[9], minOutValue[9], maxOutValue[9]);
                 break;
               case 21:
-                secondDataByte[9] = mapfloat(ypr[0], dmpMaxInValue[9], dmpMinInValue[9], minOutValue[9], maxOutValue[9]);
+                patchValue[9] = mapfloat(ypr[0], dmpMaxInValue[9], dmpMinInValue[9], minOutValue[9], maxOutValue[9]);
                 break;
         }
-        secondDataByte[9] = constrain(secondDataByte[9], minOutValue[9], maxOutValue[9]);
+        patchValue[9] = constrain(patchValue[9], minOutValue[9], maxOutValue[9]);
         switch (commandIdentifier[9]) {
               case 1: 
                 if(isMidiOut1[9] == true) {
                   // send command via MIDI Out 1
-                  midiA.sendControlChange(firstDataByte[9], secondDataByte[9], midiChan[9]);
+                  midiA.sendControlChange(ctrlrNrA[9], patchValue[9], midiChan[9]);
                 }
                 else {
                   //send command via MIDI Out 2
                   digitalWrite(out2LED, HIGH);
-                  midiB.sendControlChange(firstDataByte[9], secondDataByte[9], midiChan[9]);
+                  midiB.sendControlChange(ctrlrNrA[9], patchValue[9], midiChan[9]);
                   digitalWrite(out2LED, LOW);
                 }
                 break;
               case 2:
                 if(isMidiOut1[9] == true) {
-                  midiA.sendControlChange(nrpnMsb, firstDataByte[9], midiChan[9]);
-                  midiA.sendControlChange(nrpnLsb, firstDataByteB[9], midiChan[9]);
-                  midiA.sendControlChange(6, secondDataByte[9] / nrpnDivisor, midiChan[9]);
-                  midiA.sendControlChange(38, secondDataByte[9] % nrpnDivisor, midiChan[9]);
+                  midiA.sendControlChange(nrpnMsb, ctrlrNrA[9], midiChan[9]);
+                  midiA.sendControlChange(nrpnLsb, ctrlrNrB[9], midiChan[9]);
+                  midiA.sendControlChange(6, patchValue[9] / nrpnDivisor, midiChan[9]);
+                  midiA.sendControlChange(38, patchValue[9] % nrpnDivisor, midiChan[9]);
                 }
                 else {
                   //send command via MIDI Out 2
                   digitalWrite(out2LED, HIGH);
-                  midiB.sendControlChange(nrpnMsb, firstDataByte[9], midiChan[9]);
-                  midiB.sendControlChange(nrpnLsb, firstDataByteB[9], midiChan[9]);
-                  midiB.sendControlChange(6, secondDataByte[9] / nrpnDivisor, midiChan[9]);
-                  midiB.sendControlChange(38, secondDataByte[9] % nrpnDivisor, midiChan[9]);
+                  midiB.sendControlChange(nrpnMsb, ctrlrNrA[9], midiChan[9]);
+                  midiB.sendControlChange(nrpnLsb, ctrlrNrB[9], midiChan[9]);
+                  midiB.sendControlChange(6, patchValue[9] / nrpnDivisor, midiChan[9]);
+                  midiB.sendControlChange(38, patchValue[9] % nrpnDivisor, midiChan[9]);
                   digitalWrite(out2LED, LOW);
                 }
                 break;
               case 3:
                 if(isMidiOut1[9] == true) {
-                  midiA.sendControlChange(rpnMsb, firstDataByte[9], midiChan[9]);
-                  midiA.sendControlChange(rpnLsb, firstDataByteB[9], midiChan[9]);
-                  midiA.sendControlChange(6, secondDataByte[9] / nrpnDivisor, midiChan[9]);
-                  midiA.sendControlChange(38, secondDataByte[9] % nrpnDivisor, midiChan[9]);
+                  midiA.sendControlChange(rpnMsb, ctrlrNrA[9], midiChan[9]);
+                  midiA.sendControlChange(rpnLsb, ctrlrNrB[9], midiChan[9]);
+                  midiA.sendControlChange(6, patchValue[9] / nrpnDivisor, midiChan[9]);
+                  midiA.sendControlChange(38, patchValue[9] % nrpnDivisor, midiChan[9]);
                 }
                 else {
                   //send command via MIDI Out 2
                   digitalWrite(out2LED, HIGH);
-                  midiB.sendControlChange(rpnMsb, firstDataByte[9], midiChan[9]);
-                  midiB.sendControlChange(rpnLsb, firstDataByteB[9], midiChan[9]);
-                  midiB.sendControlChange(6, secondDataByte[9] / nrpnDivisor, midiChan[9]);
-                  midiB.sendControlChange(38, secondDataByte[9] % nrpnDivisor, midiChan[9]);
+                  midiB.sendControlChange(rpnMsb, ctrlrNrA[9], midiChan[9]);
+                  midiB.sendControlChange(rpnLsb, ctrlrNrB[9], midiChan[9]);
+                  midiB.sendControlChange(6, patchValue[9] / nrpnDivisor, midiChan[9]);
+                  midiB.sendControlChange(38, patchValue[9] % nrpnDivisor, midiChan[9]);
                   digitalWrite(out2LED, LOW);
                 }
                 break;
               case 4:
                 if(isMidiOut1[9] == true) {
-                  midiA.sendControlChange(nrpnMsb, firstDataByte[9], midiChan[9]);
-                  midiA.sendControlChange(nrpnLsb, firstDataByteB[9], midiChan[9]);
-                  midiA.sendControlChange(6, secondDataByte[9], midiChan[9]);
+                  midiA.sendControlChange(nrpnMsb, ctrlrNrA[9], midiChan[9]);
+                  midiA.sendControlChange(nrpnLsb, ctrlrNrB[9], midiChan[9]);
+                  midiA.sendControlChange(6, patchValue[9], midiChan[9]);
                 }
                 else {
                   //send command via MIDI Out 2
                   digitalWrite(out2LED, HIGH);
-                  midiB.sendControlChange(nrpnMsb, firstDataByte[9], midiChan[9]);
-                  midiB.sendControlChange(nrpnLsb, firstDataByteB[9], midiChan[9]);
-                  midiB.sendControlChange(6, secondDataByte[9], midiChan[9]);
+                  midiB.sendControlChange(nrpnMsb, ctrlrNrA[9], midiChan[9]);
+                  midiB.sendControlChange(nrpnLsb, ctrlrNrB[9], midiChan[9]);
+                  midiB.sendControlChange(6, patchValue[9], midiChan[9]);
                   digitalWrite(out2LED, LOW);
                 }
                 break;
               case 5: 
                 if(isMidiOut1[9] == true) {
                   // send command via MIDI Out 1
-                  midiA.sendControlChange(firstDataByte[9], secondDataByte[9] / nrpnDivisor, midiChan[9]);
-                  midiA.sendControlChange(firstDataByteB[9], secondDataByte[9] % nrpnDivisor, midiChan[9]);
+                  midiA.sendControlChange(ctrlrNrA[9], patchValue[9] / nrpnDivisor, midiChan[9]);
+                  midiA.sendControlChange(ctrlrNrB[9], patchValue[9] % nrpnDivisor, midiChan[9]);
                 }
                 else {
                   //send command via MIDI Out 2
                   digitalWrite(out2LED, HIGH);
-                  midiB.sendControlChange(firstDataByte[9], secondDataByte[9] / nrpnDivisor, midiChan[9]);
-                  midiB.sendControlChange(firstDataByteB[9], secondDataByte[9] % nrpnDivisor, midiChan[9]);
+                  midiB.sendControlChange(ctrlrNrA[9], patchValue[9] / nrpnDivisor, midiChan[9]);
+                  midiB.sendControlChange(ctrlrNrB[9], patchValue[9] % nrpnDivisor, midiChan[9]);
                   digitalWrite(out2LED, LOW);
                 }
                 break;
               case 6:
                 // CV OUT 1
-                dac.outputA(secondDataByte[9]);                
+                dac.outputA(patchValue[9]);                
                 break;
               case 7:
-                dac.outputB(secondDataByte[9]);                
+                dac.outputB(patchValue[9]);                
                 break;
               case 8:
-                dac2.outputA(secondDataByte[9]);                
+                dac2.outputA(patchValue[9]);                
                 break;
               case 9:
-                dac2.outputB(secondDataByte[9]);                
+                dac2.outputB(patchValue[9]);                
                 break;
               case 10:
-                dac3.outputA(secondDataByte[9]);                
+                dac3.outputA(patchValue[9]);                
                 break;
               case 11:
-                dac3.outputB(secondDataByte[9]);                
+                dac3.outputB(patchValue[9]);                
                 break;
               case 12:
-                dac4.outputA(secondDataByte[9]);                
+                dac4.outputA(patchValue[9]);                
                 break;
               case 13:
-                dac4.outputB(secondDataByte[9]);                
+                dac4.outputB(patchValue[9]);                
                 break;
         }
       }
@@ -7704,8 +7724,8 @@ void calculateMotionSendValues(){
 }
 
 //====================================================================================
-//-                                                               VOID readAnalogIns =
-void readAnalogIns (){
+//-                                                        VOID processAnalogSensors =
+void processAnalogSensors (){
 
   analogPinValue[0] = analogRead(analogInPin0);
   analogPinValue[1] = analogRead(analogInPin1); 
@@ -7719,1080 +7739,1080 @@ void readAnalogIns (){
   // Convert Analog In Values to output compatible ones and send them 
   if(mute[0] == false) {
     if(isDmp[0] == false) {
-      secondDataByte[0] = map(analogPinValue[sensorTypeIdentifier[0]], minInValue[0], maxInValue[0], minOutValue[0], maxOutValue[0]);
-      secondDataByte[0] = constrain(secondDataByte[0], minOutValue[0], maxOutValue[0]);
+      patchValue[0] = map(analogPinValue[sensorTypeIdentifier[0]], minInValue[0], maxInValue[0], minOutValue[0], maxOutValue[0]);
+      patchValue[0] = constrain(patchValue[0], minOutValue[0], maxOutValue[0]);
       switch (commandIdentifier[0]) {
             case 1: 
               if(isMidiOut1[0] == true) {
                 // send command via MIDI Out 1
-                midiA.sendControlChange(firstDataByte[0], secondDataByte[0], midiChan[0]);
+                midiA.sendControlChange(ctrlrNrA[0], patchValue[0], midiChan[0]);
               }
               else {
                 //send command via MIDI Out 2
                 digitalWrite(out2LED, HIGH);
-                midiB.sendControlChange(firstDataByte[0], secondDataByte[0], midiChan[0]);
+                midiB.sendControlChange(ctrlrNrA[0], patchValue[0], midiChan[0]);
                 digitalWrite(out2LED, LOW);
               }
               break;
             case 2:
               if(isMidiOut1[0] == true) {
-                midiA.sendControlChange(nrpnMsb, firstDataByte[0], midiChan[0]);
-                midiA.sendControlChange(nrpnLsb, firstDataByteB[0], midiChan[0]);
-                midiA.sendControlChange(6, secondDataByte[0] / nrpnDivisor, midiChan[0]);
-                midiA.sendControlChange(38, secondDataByte[0] % nrpnDivisor, midiChan[0]);
+                midiA.sendControlChange(nrpnMsb, ctrlrNrA[0], midiChan[0]);
+                midiA.sendControlChange(nrpnLsb, ctrlrNrB[0], midiChan[0]);
+                midiA.sendControlChange(6, patchValue[0] / nrpnDivisor, midiChan[0]);
+                midiA.sendControlChange(38, patchValue[0] % nrpnDivisor, midiChan[0]);
               }
               else {
                 //send command via MIDI Out 2
                 digitalWrite(out2LED, HIGH);
-                midiB.sendControlChange(nrpnMsb, firstDataByte[0], midiChan[0]);
-                midiB.sendControlChange(nrpnLsb, firstDataByteB[0], midiChan[0]);
-                midiB.sendControlChange(6, secondDataByte[0] / nrpnDivisor, midiChan[0]);
-                midiB.sendControlChange(38, secondDataByte[0] % nrpnDivisor, midiChan[0]);
+                midiB.sendControlChange(nrpnMsb, ctrlrNrA[0], midiChan[0]);
+                midiB.sendControlChange(nrpnLsb, ctrlrNrB[0], midiChan[0]);
+                midiB.sendControlChange(6, patchValue[0] / nrpnDivisor, midiChan[0]);
+                midiB.sendControlChange(38, patchValue[0] % nrpnDivisor, midiChan[0]);
                 digitalWrite(out2LED, LOW);
               }
               break;
             case 3:
               if(isMidiOut1[0] == true) {
-                midiA.sendControlChange(rpnMsb, firstDataByte[0], midiChan[0]);
-                midiA.sendControlChange(rpnLsb, firstDataByteB[0], midiChan[0]);
-                midiA.sendControlChange(6, secondDataByte[0] / nrpnDivisor, midiChan[0]);
-                midiA.sendControlChange(38, secondDataByte[0] % nrpnDivisor, midiChan[0]);
+                midiA.sendControlChange(rpnMsb, ctrlrNrA[0], midiChan[0]);
+                midiA.sendControlChange(rpnLsb, ctrlrNrB[0], midiChan[0]);
+                midiA.sendControlChange(6, patchValue[0] / nrpnDivisor, midiChan[0]);
+                midiA.sendControlChange(38, patchValue[0] % nrpnDivisor, midiChan[0]);
               }
               else {
                 //send command via MIDI Out 2
                 digitalWrite(out2LED, HIGH);
-                midiB.sendControlChange(rpnMsb, firstDataByte[0], midiChan[0]);
-                midiB.sendControlChange(rpnLsb, firstDataByteB[0], midiChan[0]);
-                midiB.sendControlChange(6, secondDataByte[0] / nrpnDivisor, midiChan[0]);
-                midiB.sendControlChange(38, secondDataByte[0] % nrpnDivisor, midiChan[0]);
+                midiB.sendControlChange(rpnMsb, ctrlrNrA[0], midiChan[0]);
+                midiB.sendControlChange(rpnLsb, ctrlrNrB[0], midiChan[0]);
+                midiB.sendControlChange(6, patchValue[0] / nrpnDivisor, midiChan[0]);
+                midiB.sendControlChange(38, patchValue[0] % nrpnDivisor, midiChan[0]);
                 digitalWrite(out2LED, LOW);
               }
               break;
             case 4:
               if(isMidiOut1[0] == true) {
-                midiA.sendControlChange(nrpnMsb, firstDataByte[0], midiChan[0]);
-                midiA.sendControlChange(nrpnLsb, firstDataByteB[0], midiChan[0]);
-                midiA.sendControlChange(6, secondDataByte[0], midiChan[0]);
+                midiA.sendControlChange(nrpnMsb, ctrlrNrA[0], midiChan[0]);
+                midiA.sendControlChange(nrpnLsb, ctrlrNrB[0], midiChan[0]);
+                midiA.sendControlChange(6, patchValue[0], midiChan[0]);
               }
               else {
                 //send command via MIDI Out 2
                 digitalWrite(out2LED, HIGH);
-                midiB.sendControlChange(nrpnMsb, firstDataByte[0], midiChan[0]);
-                midiB.sendControlChange(nrpnLsb, firstDataByteB[0], midiChan[0]);
-                midiB.sendControlChange(6, secondDataByte[0], midiChan[0]);
+                midiB.sendControlChange(nrpnMsb, ctrlrNrA[0], midiChan[0]);
+                midiB.sendControlChange(nrpnLsb, ctrlrNrB[0], midiChan[0]);
+                midiB.sendControlChange(6, patchValue[0], midiChan[0]);
                 digitalWrite(out2LED, LOW);
               }
               break;
             case 5: 
               if(isMidiOut1[0] == true) {
                 // send command via MIDI Out 1
-                midiA.sendControlChange(firstDataByte[0], secondDataByte[0] / nrpnDivisor, midiChan[0]);
-                midiA.sendControlChange(firstDataByteB[0], secondDataByte[0] % nrpnDivisor, midiChan[0]);
+                midiA.sendControlChange(ctrlrNrA[0], patchValue[0] / nrpnDivisor, midiChan[0]);
+                midiA.sendControlChange(ctrlrNrB[0], patchValue[0] % nrpnDivisor, midiChan[0]);
               }
               else {
                 //send command via MIDI Out 2
                 digitalWrite(out2LED, HIGH);
-                midiB.sendControlChange(firstDataByte[0], secondDataByte[0] / nrpnDivisor, midiChan[0]);
-                midiB.sendControlChange(firstDataByteB[0], secondDataByte[0] % nrpnDivisor, midiChan[0]);
+                midiB.sendControlChange(ctrlrNrA[0], patchValue[0] / nrpnDivisor, midiChan[0]);
+                midiB.sendControlChange(ctrlrNrB[0], patchValue[0] % nrpnDivisor, midiChan[0]);
                 digitalWrite(out2LED, LOW);
               }
               break;
             case 6:
                 // CV OUT 1
-                dac.outputA(secondDataByte[0]);                
+                dac.outputA(patchValue[0]);                
                 break;
               case 7:
-                dac.outputB(secondDataByte[0]);                
+                dac.outputB(patchValue[0]);                
                 break;
               case 8:
-                dac2.outputA(secondDataByte[0]);                
+                dac2.outputA(patchValue[0]);                
                 break;
               case 9:
-                dac2.outputB(secondDataByte[0]);                
+                dac2.outputB(patchValue[0]);                
                 break;
               case 10:
-                dac3.outputA(secondDataByte[0]);                
+                dac3.outputA(patchValue[0]);                
                 break;
               case 11:
-                dac3.outputB(secondDataByte[0]);                
+                dac3.outputB(patchValue[0]);                
                 break;
               case 12:
-                dac4.outputA(secondDataByte[0]);                
+                dac4.outputA(patchValue[0]);                
                 break;
               case 13:
-                dac4.outputB(secondDataByte[0]);                
+                dac4.outputB(patchValue[0]);                
                 break;
       }      
     }
   }
   if(mute[1] == false) {
     if(isDmp[1] == false) {
-      secondDataByte[1] = map(analogPinValue[sensorTypeIdentifier[1]], minInValue[1], maxInValue[1], minOutValue[1], maxOutValue[1]);
-      secondDataByte[1] = constrain(secondDataByte[1], minOutValue[1], maxOutValue[1]);
+      patchValue[1] = map(analogPinValue[sensorTypeIdentifier[1]], minInValue[1], maxInValue[1], minOutValue[1], maxOutValue[1]);
+      patchValue[1] = constrain(patchValue[1], minOutValue[1], maxOutValue[1]);
       switch (commandIdentifier[1]) {
             case 1: 
               if(isMidiOut1[1] == true) {
                 // send command via MIDI Out 1
-                midiA.sendControlChange(firstDataByte[1], secondDataByte[1], midiChan[1]);
+                midiA.sendControlChange(ctrlrNrA[1], patchValue[1], midiChan[1]);
               }
               else {
                 //send command via MIDI Out 2
                 digitalWrite(out2LED, HIGH);
-                midiB.sendControlChange(firstDataByte[1], secondDataByte[1], midiChan[1]);
+                midiB.sendControlChange(ctrlrNrA[1], patchValue[1], midiChan[1]);
                 digitalWrite(out2LED, LOW);
               }
               break;
             case 2:
               if(isMidiOut1[1] == true) {
-                midiA.sendControlChange(nrpnMsb, firstDataByte[1], midiChan[1]);
-                midiA.sendControlChange(nrpnLsb, firstDataByteB[1], midiChan[1]);
-                midiA.sendControlChange(6, secondDataByte[1] / nrpnDivisor, midiChan[1]);
-                midiA.sendControlChange(38, secondDataByte[1] % nrpnDivisor, midiChan[1]);
+                midiA.sendControlChange(nrpnMsb, ctrlrNrA[1], midiChan[1]);
+                midiA.sendControlChange(nrpnLsb, ctrlrNrB[1], midiChan[1]);
+                midiA.sendControlChange(6, patchValue[1] / nrpnDivisor, midiChan[1]);
+                midiA.sendControlChange(38, patchValue[1] % nrpnDivisor, midiChan[1]);
               }
               else {
                 //send command via MIDI Out 2
                 digitalWrite(out2LED, HIGH);
-                midiB.sendControlChange(nrpnMsb, firstDataByte[1], midiChan[1]);
-                midiB.sendControlChange(nrpnLsb, firstDataByteB[1], midiChan[1]);
-                midiB.sendControlChange(6, secondDataByte[1] / nrpnDivisor, midiChan[1]);
-                midiB.sendControlChange(38, secondDataByte[1] % nrpnDivisor, midiChan[1]);
+                midiB.sendControlChange(nrpnMsb, ctrlrNrA[1], midiChan[1]);
+                midiB.sendControlChange(nrpnLsb, ctrlrNrB[1], midiChan[1]);
+                midiB.sendControlChange(6, patchValue[1] / nrpnDivisor, midiChan[1]);
+                midiB.sendControlChange(38, patchValue[1] % nrpnDivisor, midiChan[1]);
                 digitalWrite(out2LED, LOW);
               }
               break;
             case 3:
               if(isMidiOut1[1] == true) {
-                midiA.sendControlChange(rpnMsb, firstDataByte[1], midiChan[1]);
-                midiA.sendControlChange(rpnLsb, firstDataByteB[1], midiChan[1]);
-                midiA.sendControlChange(6, secondDataByte[1] / nrpnDivisor, midiChan[1]);
-                midiA.sendControlChange(38, secondDataByte[1] % nrpnDivisor, midiChan[1]);
+                midiA.sendControlChange(rpnMsb, ctrlrNrA[1], midiChan[1]);
+                midiA.sendControlChange(rpnLsb, ctrlrNrB[1], midiChan[1]);
+                midiA.sendControlChange(6, patchValue[1] / nrpnDivisor, midiChan[1]);
+                midiA.sendControlChange(38, patchValue[1] % nrpnDivisor, midiChan[1]);
               }
               else {
                 //send command via MIDI Out 2
                 digitalWrite(out2LED, HIGH);
-                midiB.sendControlChange(rpnMsb, firstDataByte[1], midiChan[1]);
-                midiB.sendControlChange(rpnLsb, firstDataByteB[1], midiChan[1]);
-                midiB.sendControlChange(6, secondDataByte[1] / nrpnDivisor, midiChan[1]);
-                midiB.sendControlChange(38, secondDataByte[1] % nrpnDivisor, midiChan[1]);
+                midiB.sendControlChange(rpnMsb, ctrlrNrA[1], midiChan[1]);
+                midiB.sendControlChange(rpnLsb, ctrlrNrB[1], midiChan[1]);
+                midiB.sendControlChange(6, patchValue[1] / nrpnDivisor, midiChan[1]);
+                midiB.sendControlChange(38, patchValue[1] % nrpnDivisor, midiChan[1]);
                 digitalWrite(out2LED, LOW);
               }
               break;
             case 4:
               if(isMidiOut1[1] == true) {
-                midiA.sendControlChange(nrpnMsb, firstDataByte[1], midiChan[1]);
-                midiA.sendControlChange(nrpnLsb, firstDataByteB[1], midiChan[1]);
-                midiA.sendControlChange(6, secondDataByte[1], midiChan[1]);
+                midiA.sendControlChange(nrpnMsb, ctrlrNrA[1], midiChan[1]);
+                midiA.sendControlChange(nrpnLsb, ctrlrNrB[1], midiChan[1]);
+                midiA.sendControlChange(6, patchValue[1], midiChan[1]);
               }
               else {
                 //send command via MIDI Out 2
                 digitalWrite(out2LED, HIGH);
-                midiB.sendControlChange(nrpnMsb, firstDataByte[1], midiChan[1]);
-                midiB.sendControlChange(nrpnLsb, firstDataByteB[1], midiChan[1]);
-                midiB.sendControlChange(6, secondDataByte[1], midiChan[1]);
+                midiB.sendControlChange(nrpnMsb, ctrlrNrA[1], midiChan[1]);
+                midiB.sendControlChange(nrpnLsb, ctrlrNrB[1], midiChan[1]);
+                midiB.sendControlChange(6, patchValue[1], midiChan[1]);
                 digitalWrite(out2LED, LOW);
               }
               break;
             case 5: 
               if(isMidiOut1[1] == true) {
                 // send command via MIDI Out 1
-                midiA.sendControlChange(firstDataByte[1], secondDataByte[1] / nrpnDivisor, midiChan[1]);
-                midiA.sendControlChange(firstDataByteB[1], secondDataByte[1] % nrpnDivisor, midiChan[1]);
+                midiA.sendControlChange(ctrlrNrA[1], patchValue[1] / nrpnDivisor, midiChan[1]);
+                midiA.sendControlChange(ctrlrNrB[1], patchValue[1] % nrpnDivisor, midiChan[1]);
               }
               else {
                 //send command via MIDI Out 2
                 digitalWrite(out2LED, HIGH);
-                midiB.sendControlChange(firstDataByte[1], secondDataByte[1] / nrpnDivisor, midiChan[1]);
-                midiB.sendControlChange(firstDataByteB[1], secondDataByte[1] % nrpnDivisor, midiChan[1]);
+                midiB.sendControlChange(ctrlrNrA[1], patchValue[1] / nrpnDivisor, midiChan[1]);
+                midiB.sendControlChange(ctrlrNrB[1], patchValue[1] % nrpnDivisor, midiChan[1]);
                 digitalWrite(out2LED, LOW);
               }
               break;
             case 6:
                 // CV OUT 1
-                dac.outputA(secondDataByte[1]);                
+                dac.outputA(patchValue[1]);                
                 break;
               case 7:
-                dac.outputB(secondDataByte[1]);                
+                dac.outputB(patchValue[1]);                
                 break;
               case 8:
-                dac2.outputA(secondDataByte[1]);                
+                dac2.outputA(patchValue[1]);                
                 break;
               case 9:
-                dac2.outputB(secondDataByte[1]);                
+                dac2.outputB(patchValue[1]);                
                 break;
               case 10:
-                dac3.outputA(secondDataByte[1]);                
+                dac3.outputA(patchValue[1]);                
                 break;
               case 11:
-                dac3.outputB(secondDataByte[1]);                
+                dac3.outputB(patchValue[1]);                
                 break;
               case 12:
-                dac4.outputA(secondDataByte[1]);                
+                dac4.outputA(patchValue[1]);                
                 break;
               case 13:
-                dac4.outputB(secondDataByte[1]);                
+                dac4.outputB(patchValue[1]);                
                 break;
       }      
     }
   }
   if(mute[2] == false) {
     if(isDmp[2] == false) {
-      secondDataByte[2] = map(analogPinValue[sensorTypeIdentifier[2]], minInValue[2], maxInValue[2], minOutValue[2], maxOutValue[2]);
-      secondDataByte[2] = constrain(secondDataByte[2], minOutValue[2], maxOutValue[2]);
+      patchValue[2] = map(analogPinValue[sensorTypeIdentifier[2]], minInValue[2], maxInValue[2], minOutValue[2], maxOutValue[2]);
+      patchValue[2] = constrain(patchValue[2], minOutValue[2], maxOutValue[2]);
       switch (commandIdentifier[2]) {
             case 1: 
               if(isMidiOut1[2] == true) {
                 // send command via MIDI Out 1
-                midiA.sendControlChange(firstDataByte[2], secondDataByte[2], midiChan[2]);
+                midiA.sendControlChange(ctrlrNrA[2], patchValue[2], midiChan[2]);
               }
               else {
                 //send command via MIDI Out 2
                 digitalWrite(out2LED, HIGH);
-                midiB.sendControlChange(firstDataByte[2], secondDataByte[2], midiChan[2]);
+                midiB.sendControlChange(ctrlrNrA[2], patchValue[2], midiChan[2]);
                 digitalWrite(out2LED, LOW);
               }
               break;
             case 2:
               if(isMidiOut1[2] == true) {
-                midiA.sendControlChange(nrpnMsb, firstDataByte[2], midiChan[2]);
-                midiA.sendControlChange(nrpnLsb, firstDataByteB[2], midiChan[2]);
-                midiA.sendControlChange(6, secondDataByte[2] / nrpnDivisor, midiChan[2]);
-                midiA.sendControlChange(38, secondDataByte[2] % nrpnDivisor, midiChan[2]);
+                midiA.sendControlChange(nrpnMsb, ctrlrNrA[2], midiChan[2]);
+                midiA.sendControlChange(nrpnLsb, ctrlrNrB[2], midiChan[2]);
+                midiA.sendControlChange(6, patchValue[2] / nrpnDivisor, midiChan[2]);
+                midiA.sendControlChange(38, patchValue[2] % nrpnDivisor, midiChan[2]);
               }
               else {
                 //send command via MIDI Out 2
                 digitalWrite(out2LED, HIGH);
-                midiB.sendControlChange(nrpnMsb, firstDataByte[2], midiChan[2]);
-                midiB.sendControlChange(nrpnLsb, firstDataByteB[2], midiChan[2]);
-                midiB.sendControlChange(6, secondDataByte[2] / nrpnDivisor, midiChan[2]);
-                midiB.sendControlChange(38, secondDataByte[2] % nrpnDivisor, midiChan[2]);
+                midiB.sendControlChange(nrpnMsb, ctrlrNrA[2], midiChan[2]);
+                midiB.sendControlChange(nrpnLsb, ctrlrNrB[2], midiChan[2]);
+                midiB.sendControlChange(6, patchValue[2] / nrpnDivisor, midiChan[2]);
+                midiB.sendControlChange(38, patchValue[2] % nrpnDivisor, midiChan[2]);
                 digitalWrite(out2LED, LOW);
               }
               break;
             case 3:
               if(isMidiOut1[2] == true) {
-                midiA.sendControlChange(rpnMsb, firstDataByte[2], midiChan[2]);
-                midiA.sendControlChange(rpnLsb, firstDataByteB[2], midiChan[2]);
-                midiA.sendControlChange(6, secondDataByte[2] / nrpnDivisor, midiChan[2]);
-                midiA.sendControlChange(38, secondDataByte[2] % nrpnDivisor, midiChan[2]);
+                midiA.sendControlChange(rpnMsb, ctrlrNrA[2], midiChan[2]);
+                midiA.sendControlChange(rpnLsb, ctrlrNrB[2], midiChan[2]);
+                midiA.sendControlChange(6, patchValue[2] / nrpnDivisor, midiChan[2]);
+                midiA.sendControlChange(38, patchValue[2] % nrpnDivisor, midiChan[2]);
               }
               else {
                 //send command via MIDI Out 2
                 digitalWrite(out2LED, HIGH);
-                midiB.sendControlChange(rpnMsb, firstDataByte[2], midiChan[2]);
-                midiB.sendControlChange(rpnLsb, firstDataByteB[2], midiChan[2]);
-                midiB.sendControlChange(6, secondDataByte[2] / nrpnDivisor, midiChan[2]);
-                midiB.sendControlChange(38, secondDataByte[2] % nrpnDivisor, midiChan[2]);
+                midiB.sendControlChange(rpnMsb, ctrlrNrA[2], midiChan[2]);
+                midiB.sendControlChange(rpnLsb, ctrlrNrB[2], midiChan[2]);
+                midiB.sendControlChange(6, patchValue[2] / nrpnDivisor, midiChan[2]);
+                midiB.sendControlChange(38, patchValue[2] % nrpnDivisor, midiChan[2]);
                 digitalWrite(out2LED, LOW);
               }
               break;
             case 4:
               if(isMidiOut1[2] == true) {
-                midiA.sendControlChange(nrpnMsb, firstDataByte[2], midiChan[2]);
-                midiA.sendControlChange(nrpnLsb, firstDataByteB[2], midiChan[2]);
-                midiA.sendControlChange(6, secondDataByte[2], midiChan[2]);
+                midiA.sendControlChange(nrpnMsb, ctrlrNrA[2], midiChan[2]);
+                midiA.sendControlChange(nrpnLsb, ctrlrNrB[2], midiChan[2]);
+                midiA.sendControlChange(6, patchValue[2], midiChan[2]);
               }
               else {
                 //send command via MIDI Out 2
                 digitalWrite(out2LED, HIGH);
-                midiB.sendControlChange(nrpnMsb, firstDataByte[2], midiChan[2]);
-                midiB.sendControlChange(nrpnLsb, firstDataByteB[2], midiChan[2]);
-                midiB.sendControlChange(6, secondDataByte[2], midiChan[2]);
+                midiB.sendControlChange(nrpnMsb, ctrlrNrA[2], midiChan[2]);
+                midiB.sendControlChange(nrpnLsb, ctrlrNrB[2], midiChan[2]);
+                midiB.sendControlChange(6, patchValue[2], midiChan[2]);
                 digitalWrite(out2LED, LOW);
               }
               break;
             case 5: 
               if(isMidiOut1[2] == true) {
                 // send command via MIDI Out 1
-                midiA.sendControlChange(firstDataByte[2], secondDataByte[2] / nrpnDivisor, midiChan[2]);
-                midiA.sendControlChange(firstDataByteB[2], secondDataByte[2] % nrpnDivisor, midiChan[2]);
+                midiA.sendControlChange(ctrlrNrA[2], patchValue[2] / nrpnDivisor, midiChan[2]);
+                midiA.sendControlChange(ctrlrNrB[2], patchValue[2] % nrpnDivisor, midiChan[2]);
               }
               else {
                 //send command via MIDI Out 2
                 digitalWrite(out2LED, HIGH);
-                midiB.sendControlChange(firstDataByte[2], secondDataByte[2] / nrpnDivisor, midiChan[2]);
-                midiB.sendControlChange(firstDataByteB[2], secondDataByte[2] % nrpnDivisor, midiChan[2]);
+                midiB.sendControlChange(ctrlrNrA[2], patchValue[2] / nrpnDivisor, midiChan[2]);
+                midiB.sendControlChange(ctrlrNrB[2], patchValue[2] % nrpnDivisor, midiChan[2]);
                 digitalWrite(out2LED, LOW);
               }
               break;
             case 6:
                 // CV OUT 1
-                dac.outputA(secondDataByte[2]);                
+                dac.outputA(patchValue[2]);                
                 break;
               case 7:
-                dac.outputB(secondDataByte[2]);                
+                dac.outputB(patchValue[2]);                
                 break;
               case 8:
-                dac2.outputA(secondDataByte[2]);                
+                dac2.outputA(patchValue[2]);                
                 break;
               case 9:
-                dac2.outputB(secondDataByte[2]);                
+                dac2.outputB(patchValue[2]);                
                 break;
               case 10:
-                dac3.outputA(secondDataByte[2]);                
+                dac3.outputA(patchValue[2]);                
                 break;
               case 11:
-                dac3.outputB(secondDataByte[2]);                
+                dac3.outputB(patchValue[2]);                
                 break;
               case 12:
-                dac4.outputA(secondDataByte[2]);                
+                dac4.outputA(patchValue[2]);                
                 break;
               case 13:
-                dac4.outputB(secondDataByte[2]);                
+                dac4.outputB(patchValue[2]);                
                 break;
       }      
     }
   }
   if(mute[3] == false) {
     if(isDmp[3] == false) {
-      secondDataByte[3] = map(analogPinValue[sensorTypeIdentifier[3]], minInValue[3], maxInValue[3], minOutValue[3], maxOutValue[3]);
-      secondDataByte[3] = constrain(secondDataByte[3], minOutValue[3], maxOutValue[3]);
+      patchValue[3] = map(analogPinValue[sensorTypeIdentifier[3]], minInValue[3], maxInValue[3], minOutValue[3], maxOutValue[3]);
+      patchValue[3] = constrain(patchValue[3], minOutValue[3], maxOutValue[3]);
       switch (commandIdentifier[3]) {
             case 1: 
               if(isMidiOut1[3] == true) {
                 // send command via MIDI Out 1
-                midiA.sendControlChange(firstDataByte[3], secondDataByte[3], midiChan[3]);
+                midiA.sendControlChange(ctrlrNrA[3], patchValue[3], midiChan[3]);
               }
               else {
                 //send command via MIDI Out 2
                 digitalWrite(out2LED, HIGH);
-                midiB.sendControlChange(firstDataByte[3], secondDataByte[3], midiChan[3]);
+                midiB.sendControlChange(ctrlrNrA[3], patchValue[3], midiChan[3]);
                 digitalWrite(out2LED, LOW);
               }
               break;
             case 2:
               if(isMidiOut1[3] == true) {
-                midiA.sendControlChange(nrpnMsb, firstDataByte[3], midiChan[3]);
-                midiA.sendControlChange(nrpnLsb, firstDataByteB[3], midiChan[3]);
-                midiA.sendControlChange(6, secondDataByte[3] / nrpnDivisor, midiChan[3]);
-                midiA.sendControlChange(38, secondDataByte[3] % nrpnDivisor, midiChan[3]);
+                midiA.sendControlChange(nrpnMsb, ctrlrNrA[3], midiChan[3]);
+                midiA.sendControlChange(nrpnLsb, ctrlrNrB[3], midiChan[3]);
+                midiA.sendControlChange(6, patchValue[3] / nrpnDivisor, midiChan[3]);
+                midiA.sendControlChange(38, patchValue[3] % nrpnDivisor, midiChan[3]);
               }
               else {
                 //send command via MIDI Out 2
                 digitalWrite(out2LED, HIGH);
-                midiB.sendControlChange(nrpnMsb, firstDataByte[3], midiChan[3]);
-                midiB.sendControlChange(nrpnLsb, firstDataByteB[3], midiChan[3]);
-                midiB.sendControlChange(6, secondDataByte[3] / nrpnDivisor, midiChan[3]);
-                midiB.sendControlChange(38, secondDataByte[3] % nrpnDivisor, midiChan[3]);
+                midiB.sendControlChange(nrpnMsb, ctrlrNrA[3], midiChan[3]);
+                midiB.sendControlChange(nrpnLsb, ctrlrNrB[3], midiChan[3]);
+                midiB.sendControlChange(6, patchValue[3] / nrpnDivisor, midiChan[3]);
+                midiB.sendControlChange(38, patchValue[3] % nrpnDivisor, midiChan[3]);
                 digitalWrite(out2LED, LOW);
               }
               break;
             case 3:
               if(isMidiOut1[3] == true) {
-                midiA.sendControlChange(rpnMsb, firstDataByte[3], midiChan[3]);
-                midiA.sendControlChange(rpnLsb, firstDataByteB[3], midiChan[3]);
-                midiA.sendControlChange(6, secondDataByte[3] / nrpnDivisor, midiChan[3]);
-                midiA.sendControlChange(38, secondDataByte[3] % nrpnDivisor, midiChan[3]);
+                midiA.sendControlChange(rpnMsb, ctrlrNrA[3], midiChan[3]);
+                midiA.sendControlChange(rpnLsb, ctrlrNrB[3], midiChan[3]);
+                midiA.sendControlChange(6, patchValue[3] / nrpnDivisor, midiChan[3]);
+                midiA.sendControlChange(38, patchValue[3] % nrpnDivisor, midiChan[3]);
               }
               else {
                 //send command via MIDI Out 2
                 digitalWrite(out2LED, HIGH);
-                midiB.sendControlChange(rpnMsb, firstDataByte[3], midiChan[3]);
-                midiB.sendControlChange(rpnLsb, firstDataByteB[3], midiChan[3]);
-                midiB.sendControlChange(6, secondDataByte[3] / nrpnDivisor, midiChan[3]);
-                midiB.sendControlChange(38, secondDataByte[3] % nrpnDivisor, midiChan[3]);
+                midiB.sendControlChange(rpnMsb, ctrlrNrA[3], midiChan[3]);
+                midiB.sendControlChange(rpnLsb, ctrlrNrB[3], midiChan[3]);
+                midiB.sendControlChange(6, patchValue[3] / nrpnDivisor, midiChan[3]);
+                midiB.sendControlChange(38, patchValue[3] % nrpnDivisor, midiChan[3]);
                 digitalWrite(out2LED, LOW);
               }
               break;
             case 4:
               if(isMidiOut1[3] == true) {
-                midiA.sendControlChange(nrpnMsb, firstDataByte[3], midiChan[3]);
-                midiA.sendControlChange(nrpnLsb, firstDataByteB[3], midiChan[3]);
-                midiA.sendControlChange(6, secondDataByte[3], midiChan[3]);
+                midiA.sendControlChange(nrpnMsb, ctrlrNrA[3], midiChan[3]);
+                midiA.sendControlChange(nrpnLsb, ctrlrNrB[3], midiChan[3]);
+                midiA.sendControlChange(6, patchValue[3], midiChan[3]);
               }
               else {
                 //send command via MIDI Out 2
                 digitalWrite(out2LED, HIGH);
-                midiB.sendControlChange(nrpnMsb, firstDataByte[3], midiChan[3]);
-                midiB.sendControlChange(nrpnLsb, firstDataByteB[3], midiChan[3]);
-                midiB.sendControlChange(6, secondDataByte[3], midiChan[3]);
+                midiB.sendControlChange(nrpnMsb, ctrlrNrA[3], midiChan[3]);
+                midiB.sendControlChange(nrpnLsb, ctrlrNrB[3], midiChan[3]);
+                midiB.sendControlChange(6, patchValue[3], midiChan[3]);
                 digitalWrite(out2LED, LOW);
               }
               break;
             case 5: 
               if(isMidiOut1[3] == true) {
                 // send command via MIDI Out 1
-                midiA.sendControlChange(firstDataByte[3], secondDataByte[3] / nrpnDivisor, midiChan[3]);
-                midiA.sendControlChange(firstDataByteB[3], secondDataByte[3] % nrpnDivisor, midiChan[3]);
+                midiA.sendControlChange(ctrlrNrA[3], patchValue[3] / nrpnDivisor, midiChan[3]);
+                midiA.sendControlChange(ctrlrNrB[3], patchValue[3] % nrpnDivisor, midiChan[3]);
               }
               else {
                 //send command via MIDI Out 2
                 digitalWrite(out2LED, HIGH);
-                midiB.sendControlChange(firstDataByte[3], secondDataByte[3] / nrpnDivisor, midiChan[3]);
-                midiB.sendControlChange(firstDataByteB[3], secondDataByte[3] % nrpnDivisor, midiChan[3]);
+                midiB.sendControlChange(ctrlrNrA[3], patchValue[3] / nrpnDivisor, midiChan[3]);
+                midiB.sendControlChange(ctrlrNrB[3], patchValue[3] % nrpnDivisor, midiChan[3]);
                 digitalWrite(out2LED, LOW);
               }
               break;
             case 6:
                 // CV OUT 1
-                dac.outputA(secondDataByte[3]);                
+                dac.outputA(patchValue[3]);                
                 break;
               case 7:
-                dac.outputB(secondDataByte[3]);                
+                dac.outputB(patchValue[3]);                
                 break;
               case 8:
-                dac2.outputA(secondDataByte[3]);                
+                dac2.outputA(patchValue[3]);                
                 break;
               case 9:
-                dac2.outputB(secondDataByte[3]);                
+                dac2.outputB(patchValue[3]);                
                 break;
               case 10:
-                dac3.outputA(secondDataByte[3]);                
+                dac3.outputA(patchValue[3]);                
                 break;
               case 11:
-                dac3.outputB(secondDataByte[3]);                
+                dac3.outputB(patchValue[3]);                
                 break;
               case 12:
-                dac4.outputA(secondDataByte[3]);                
+                dac4.outputA(patchValue[3]);                
                 break;
               case 13:
-                dac4.outputB(secondDataByte[3]);                
+                dac4.outputB(patchValue[3]);                
                 break;
       }      
     }
   }
   if(mute[4] == false) {
     if(isDmp[4] == false) {
-      secondDataByte[4] = map(analogPinValue[sensorTypeIdentifier[4]], minInValue[4], maxInValue[4], minOutValue[4], maxOutValue[4]);
-      secondDataByte[4] = constrain(secondDataByte[4], minOutValue[4], maxOutValue[4]);
+      patchValue[4] = map(analogPinValue[sensorTypeIdentifier[4]], minInValue[4], maxInValue[4], minOutValue[4], maxOutValue[4]);
+      patchValue[4] = constrain(patchValue[4], minOutValue[4], maxOutValue[4]);
       switch (commandIdentifier[4]) {
             case 1: 
               if(isMidiOut1[4] == true) {
                 // send command via MIDI Out 1
-                midiA.sendControlChange(firstDataByte[4], secondDataByte[4], midiChan[4]);
+                midiA.sendControlChange(ctrlrNrA[4], patchValue[4], midiChan[4]);
               }
               else {
                 //send command via MIDI Out 2
                 digitalWrite(out2LED, HIGH);
-                midiB.sendControlChange(firstDataByte[4], secondDataByte[4], midiChan[4]);
+                midiB.sendControlChange(ctrlrNrA[4], patchValue[4], midiChan[4]);
                 digitalWrite(out2LED, LOW);
               }
               break;
             case 2:
               if(isMidiOut1[4] == true) {
-                midiA.sendControlChange(nrpnMsb, firstDataByte[4], midiChan[4]);
-                midiA.sendControlChange(nrpnLsb, firstDataByteB[4], midiChan[4]);
-                midiA.sendControlChange(6, secondDataByte[4] / nrpnDivisor, midiChan[4]);
-                midiA.sendControlChange(38, secondDataByte[4] % nrpnDivisor, midiChan[4]);
+                midiA.sendControlChange(nrpnMsb, ctrlrNrA[4], midiChan[4]);
+                midiA.sendControlChange(nrpnLsb, ctrlrNrB[4], midiChan[4]);
+                midiA.sendControlChange(6, patchValue[4] / nrpnDivisor, midiChan[4]);
+                midiA.sendControlChange(38, patchValue[4] % nrpnDivisor, midiChan[4]);
               }
               else {
                 //send command via MIDI Out 2
                 digitalWrite(out2LED, HIGH);
-                midiB.sendControlChange(nrpnMsb, firstDataByte[4], midiChan[4]);
-                midiB.sendControlChange(nrpnLsb, firstDataByteB[4], midiChan[4]);
-                midiB.sendControlChange(6, secondDataByte[4] / nrpnDivisor, midiChan[4]);
-                midiB.sendControlChange(38, secondDataByte[4] % nrpnDivisor, midiChan[4]);
+                midiB.sendControlChange(nrpnMsb, ctrlrNrA[4], midiChan[4]);
+                midiB.sendControlChange(nrpnLsb, ctrlrNrB[4], midiChan[4]);
+                midiB.sendControlChange(6, patchValue[4] / nrpnDivisor, midiChan[4]);
+                midiB.sendControlChange(38, patchValue[4] % nrpnDivisor, midiChan[4]);
                 digitalWrite(out2LED, LOW);
               }
               break;
             case 3:
               if(isMidiOut1[4] == true) {
-                midiA.sendControlChange(rpnMsb, firstDataByte[4], midiChan[4]);
-                midiA.sendControlChange(rpnLsb, firstDataByteB[4], midiChan[4]);
-                midiA.sendControlChange(6, secondDataByte[4] / nrpnDivisor, midiChan[4]);
-                midiA.sendControlChange(38, secondDataByte[4] % nrpnDivisor, midiChan[4]);
+                midiA.sendControlChange(rpnMsb, ctrlrNrA[4], midiChan[4]);
+                midiA.sendControlChange(rpnLsb, ctrlrNrB[4], midiChan[4]);
+                midiA.sendControlChange(6, patchValue[4] / nrpnDivisor, midiChan[4]);
+                midiA.sendControlChange(38, patchValue[4] % nrpnDivisor, midiChan[4]);
               }
               else {
                 //send command via MIDI Out 2
                 digitalWrite(out2LED, HIGH);
-                midiB.sendControlChange(rpnMsb, firstDataByte[4], midiChan[4]);
-                midiB.sendControlChange(rpnLsb, firstDataByteB[4], midiChan[4]);
-                midiB.sendControlChange(6, secondDataByte[4] / nrpnDivisor, midiChan[4]);
-                midiB.sendControlChange(38, secondDataByte[4] % nrpnDivisor, midiChan[4]);
+                midiB.sendControlChange(rpnMsb, ctrlrNrA[4], midiChan[4]);
+                midiB.sendControlChange(rpnLsb, ctrlrNrB[4], midiChan[4]);
+                midiB.sendControlChange(6, patchValue[4] / nrpnDivisor, midiChan[4]);
+                midiB.sendControlChange(38, patchValue[4] % nrpnDivisor, midiChan[4]);
                 digitalWrite(out2LED, LOW);
               }
               break;
             case 4:
               if(isMidiOut1[4] == true) {
-                midiA.sendControlChange(nrpnMsb, firstDataByte[4], midiChan[4]);
-                midiA.sendControlChange(nrpnLsb, firstDataByteB[4], midiChan[4]);
-                midiA.sendControlChange(6, secondDataByte[4], midiChan[4]);
+                midiA.sendControlChange(nrpnMsb, ctrlrNrA[4], midiChan[4]);
+                midiA.sendControlChange(nrpnLsb, ctrlrNrB[4], midiChan[4]);
+                midiA.sendControlChange(6, patchValue[4], midiChan[4]);
               }
               else {
                 //send command via MIDI Out 2
                 digitalWrite(out2LED, HIGH);
-                midiB.sendControlChange(nrpnMsb, firstDataByte[4], midiChan[4]);
-                midiB.sendControlChange(nrpnLsb, firstDataByteB[4], midiChan[4]);
-                midiB.sendControlChange(6, secondDataByte[4], midiChan[4]);
+                midiB.sendControlChange(nrpnMsb, ctrlrNrA[4], midiChan[4]);
+                midiB.sendControlChange(nrpnLsb, ctrlrNrB[4], midiChan[4]);
+                midiB.sendControlChange(6, patchValue[4], midiChan[4]);
                 digitalWrite(out2LED, LOW);
               }
               break;
             case 5: 
               if(isMidiOut1[4] == true) {
                 // send command via MIDI Out 1
-                midiA.sendControlChange(firstDataByte[4], secondDataByte[4] / nrpnDivisor, midiChan[4]);
-                midiA.sendControlChange(firstDataByteB[4], secondDataByte[4] % nrpnDivisor, midiChan[4]);
+                midiA.sendControlChange(ctrlrNrA[4], patchValue[4] / nrpnDivisor, midiChan[4]);
+                midiA.sendControlChange(ctrlrNrB[4], patchValue[4] % nrpnDivisor, midiChan[4]);
               }
               else {
                 //send command via MIDI Out 2
                 digitalWrite(out2LED, HIGH);
-                midiB.sendControlChange(firstDataByte[4], secondDataByte[4] / nrpnDivisor, midiChan[4]);
-                midiB.sendControlChange(firstDataByteB[4], secondDataByte[4] % nrpnDivisor, midiChan[4]);
+                midiB.sendControlChange(ctrlrNrA[4], patchValue[4] / nrpnDivisor, midiChan[4]);
+                midiB.sendControlChange(ctrlrNrB[4], patchValue[4] % nrpnDivisor, midiChan[4]);
                 digitalWrite(out2LED, LOW);
               }
               break;
             case 6:
                 // CV OUT 1
-                dac.outputA(secondDataByte[4]);                
+                dac.outputA(patchValue[4]);                
                 break;
               case 7:
-                dac.outputB(secondDataByte[4]);                
+                dac.outputB(patchValue[4]);                
                 break;
               case 8:
-                dac2.outputA(secondDataByte[4]);                
+                dac2.outputA(patchValue[4]);                
                 break;
               case 9:
-                dac2.outputB(secondDataByte[4]);                
+                dac2.outputB(patchValue[4]);                
                 break;
               case 10:
-                dac3.outputA(secondDataByte[4]);                
+                dac3.outputA(patchValue[4]);                
                 break;
               case 11:
-                dac3.outputB(secondDataByte[4]);                
+                dac3.outputB(patchValue[4]);                
                 break;
               case 12:
-                dac4.outputA(secondDataByte[4]);                
+                dac4.outputA(patchValue[4]);                
                 break;
               case 13:
-                dac4.outputB(secondDataByte[4]);                
+                dac4.outputB(patchValue[4]);                
                 break;
       }      
     }
   }
   if(mute[5] == false) {
     if(isDmp[5] == false) {
-      secondDataByte[5] = map(analogPinValue[sensorTypeIdentifier[5]], minInValue[5], maxInValue[5], minOutValue[5], maxOutValue[5]);
-      secondDataByte[5] = constrain(secondDataByte[5], minOutValue[5], maxOutValue[5]);
+      patchValue[5] = map(analogPinValue[sensorTypeIdentifier[5]], minInValue[5], maxInValue[5], minOutValue[5], maxOutValue[5]);
+      patchValue[5] = constrain(patchValue[5], minOutValue[5], maxOutValue[5]);
       switch (commandIdentifier[5]) {
             case 1: 
               if(isMidiOut1[5] == true) {
                 // send command via MIDI Out 1
-                midiA.sendControlChange(firstDataByte[5], secondDataByte[5], midiChan[5]);
+                midiA.sendControlChange(ctrlrNrA[5], patchValue[5], midiChan[5]);
               }
               else {
                 //send command via MIDI Out 2
                 digitalWrite(out2LED, HIGH);
-                midiB.sendControlChange(firstDataByte[5], secondDataByte[5], midiChan[5]);
+                midiB.sendControlChange(ctrlrNrA[5], patchValue[5], midiChan[5]);
                 digitalWrite(out2LED, LOW);
               }
               break;
             case 2:
               if(isMidiOut1[5] == true) {
-                midiA.sendControlChange(nrpnMsb, firstDataByte[5], midiChan[5]);
-                midiA.sendControlChange(nrpnLsb, firstDataByteB[5], midiChan[5]);
-                midiA.sendControlChange(6, secondDataByte[5] / nrpnDivisor, midiChan[5]);
-                midiA.sendControlChange(38, secondDataByte[5] % nrpnDivisor, midiChan[5]);
+                midiA.sendControlChange(nrpnMsb, ctrlrNrA[5], midiChan[5]);
+                midiA.sendControlChange(nrpnLsb, ctrlrNrB[5], midiChan[5]);
+                midiA.sendControlChange(6, patchValue[5] / nrpnDivisor, midiChan[5]);
+                midiA.sendControlChange(38, patchValue[5] % nrpnDivisor, midiChan[5]);
               }
               else {
                 //send command via MIDI Out 2
                 digitalWrite(out2LED, HIGH);
-                midiB.sendControlChange(nrpnMsb, firstDataByte[5], midiChan[5]);
-                midiB.sendControlChange(nrpnLsb, firstDataByteB[5], midiChan[5]);
-                midiB.sendControlChange(6, secondDataByte[5] / nrpnDivisor, midiChan[5]);
-                midiB.sendControlChange(38, secondDataByte[5] % nrpnDivisor, midiChan[5]);
+                midiB.sendControlChange(nrpnMsb, ctrlrNrA[5], midiChan[5]);
+                midiB.sendControlChange(nrpnLsb, ctrlrNrB[5], midiChan[5]);
+                midiB.sendControlChange(6, patchValue[5] / nrpnDivisor, midiChan[5]);
+                midiB.sendControlChange(38, patchValue[5] % nrpnDivisor, midiChan[5]);
                 digitalWrite(out2LED, LOW);
               }
               break;
             case 3:
               if(isMidiOut1[5] == true) {
-                midiA.sendControlChange(rpnMsb, firstDataByte[5], midiChan[5]);
-                midiA.sendControlChange(rpnLsb, firstDataByteB[5], midiChan[5]);
-                midiA.sendControlChange(6, secondDataByte[5] / nrpnDivisor, midiChan[5]);
-                midiA.sendControlChange(38, secondDataByte[5] % nrpnDivisor, midiChan[5]);
+                midiA.sendControlChange(rpnMsb, ctrlrNrA[5], midiChan[5]);
+                midiA.sendControlChange(rpnLsb, ctrlrNrB[5], midiChan[5]);
+                midiA.sendControlChange(6, patchValue[5] / nrpnDivisor, midiChan[5]);
+                midiA.sendControlChange(38, patchValue[5] % nrpnDivisor, midiChan[5]);
               }
               else {
                 //send command via MIDI Out 2
                 digitalWrite(out2LED, HIGH);
-                midiB.sendControlChange(rpnMsb, firstDataByte[5], midiChan[5]);
-                midiB.sendControlChange(rpnLsb, firstDataByteB[5], midiChan[5]);
-                midiB.sendControlChange(6, secondDataByte[5] / nrpnDivisor, midiChan[5]);
-                midiB.sendControlChange(38, secondDataByte[5] % nrpnDivisor, midiChan[5]);
+                midiB.sendControlChange(rpnMsb, ctrlrNrA[5], midiChan[5]);
+                midiB.sendControlChange(rpnLsb, ctrlrNrB[5], midiChan[5]);
+                midiB.sendControlChange(6, patchValue[5] / nrpnDivisor, midiChan[5]);
+                midiB.sendControlChange(38, patchValue[5] % nrpnDivisor, midiChan[5]);
                 digitalWrite(out2LED, LOW);
               }
               break;
             case 4:
               if(isMidiOut1[5] == true) {
-                midiA.sendControlChange(nrpnMsb, firstDataByte[5], midiChan[5]);
-                midiA.sendControlChange(nrpnLsb, firstDataByteB[5], midiChan[5]);
-                midiA.sendControlChange(6, secondDataByte[5], midiChan[5]);
+                midiA.sendControlChange(nrpnMsb, ctrlrNrA[5], midiChan[5]);
+                midiA.sendControlChange(nrpnLsb, ctrlrNrB[5], midiChan[5]);
+                midiA.sendControlChange(6, patchValue[5], midiChan[5]);
               }
               else {
                 //send command via MIDI Out 2
                 digitalWrite(out2LED, HIGH);
-                midiB.sendControlChange(nrpnMsb, firstDataByte[5], midiChan[5]);
-                midiB.sendControlChange(nrpnLsb, firstDataByteB[5], midiChan[5]);
-                midiB.sendControlChange(6, secondDataByte[5], midiChan[5]);
+                midiB.sendControlChange(nrpnMsb, ctrlrNrA[5], midiChan[5]);
+                midiB.sendControlChange(nrpnLsb, ctrlrNrB[5], midiChan[5]);
+                midiB.sendControlChange(6, patchValue[5], midiChan[5]);
                 digitalWrite(out2LED, LOW);
               }
               break;
             case 5: 
               if(isMidiOut1[5] == true) {
                 // send command via MIDI Out 1
-                midiA.sendControlChange(firstDataByte[5], secondDataByte[5] / nrpnDivisor, midiChan[5]);
-                midiA.sendControlChange(firstDataByteB[5], secondDataByte[5] % nrpnDivisor, midiChan[5]);
+                midiA.sendControlChange(ctrlrNrA[5], patchValue[5] / nrpnDivisor, midiChan[5]);
+                midiA.sendControlChange(ctrlrNrB[5], patchValue[5] % nrpnDivisor, midiChan[5]);
               }
               else {
                 //send command via MIDI Out 2
                 digitalWrite(out2LED, HIGH);
-                midiB.sendControlChange(firstDataByte[5], secondDataByte[5] / nrpnDivisor, midiChan[5]);
-                midiB.sendControlChange(firstDataByteB[5], secondDataByte[5] % nrpnDivisor, midiChan[5]);
+                midiB.sendControlChange(ctrlrNrA[5], patchValue[5] / nrpnDivisor, midiChan[5]);
+                midiB.sendControlChange(ctrlrNrB[5], patchValue[5] % nrpnDivisor, midiChan[5]);
                 digitalWrite(out2LED, LOW);
               }
               break;
             case 6:
                 // CV OUT 1
-                dac.outputA(secondDataByte[5]);                
+                dac.outputA(patchValue[5]);                
                 break;
               case 7:
-                dac.outputB(secondDataByte[5]);                
+                dac.outputB(patchValue[5]);                
                 break;
               case 8:
-                dac2.outputA(secondDataByte[5]);                
+                dac2.outputA(patchValue[5]);                
                 break;
               case 9:
-                dac2.outputB(secondDataByte[5]);                
+                dac2.outputB(patchValue[5]);                
                 break;
               case 10:
-                dac3.outputA(secondDataByte[5]);                
+                dac3.outputA(patchValue[5]);                
                 break;
               case 11:
-                dac3.outputB(secondDataByte[5]);                
+                dac3.outputB(patchValue[5]);                
                 break;
               case 12:
-                dac4.outputA(secondDataByte[5]);                
+                dac4.outputA(patchValue[5]);                
                 break;
               case 13:
-                dac4.outputB(secondDataByte[5]);                
+                dac4.outputB(patchValue[5]);                
                 break;
       }      
     }
   }
   if(mute[6] == false) {
     if(isDmp[6] == false) {
-      secondDataByte[6] = map(analogPinValue[sensorTypeIdentifier[6]], minInValue[6], maxInValue[6], minOutValue[6], maxOutValue[6]);
-      secondDataByte[6] = constrain(secondDataByte[6], minOutValue[6], maxOutValue[6]);
+      patchValue[6] = map(analogPinValue[sensorTypeIdentifier[6]], minInValue[6], maxInValue[6], minOutValue[6], maxOutValue[6]);
+      patchValue[6] = constrain(patchValue[6], minOutValue[6], maxOutValue[6]);
       switch (commandIdentifier[6]) {
             case 1: 
               if(isMidiOut1[6] == true) {
                 // send command via MIDI Out 1
-                midiA.sendControlChange(firstDataByte[6], secondDataByte[6], midiChan[6]);
+                midiA.sendControlChange(ctrlrNrA[6], patchValue[6], midiChan[6]);
               }
               else {
                 //send command via MIDI Out 2
                 digitalWrite(out2LED, HIGH);
-                midiB.sendControlChange(firstDataByte[6], secondDataByte[6], midiChan[6]);
+                midiB.sendControlChange(ctrlrNrA[6], patchValue[6], midiChan[6]);
                 digitalWrite(out2LED, LOW);
               }
               break;
             case 2:
               if(isMidiOut1[6] == true) {
-                midiA.sendControlChange(nrpnMsb, firstDataByte[6], midiChan[6]);
-                midiA.sendControlChange(nrpnLsb, firstDataByteB[6], midiChan[6]);
-                midiA.sendControlChange(6, secondDataByte[6] / nrpnDivisor, midiChan[6]);
-                midiA.sendControlChange(38, secondDataByte[6] % nrpnDivisor, midiChan[6]);
+                midiA.sendControlChange(nrpnMsb, ctrlrNrA[6], midiChan[6]);
+                midiA.sendControlChange(nrpnLsb, ctrlrNrB[6], midiChan[6]);
+                midiA.sendControlChange(6, patchValue[6] / nrpnDivisor, midiChan[6]);
+                midiA.sendControlChange(38, patchValue[6] % nrpnDivisor, midiChan[6]);
               }
               else {
                 //send command via MIDI Out 2
                 digitalWrite(out2LED, HIGH);
-                midiB.sendControlChange(nrpnMsb, firstDataByte[6], midiChan[6]);
-                midiB.sendControlChange(nrpnLsb, firstDataByteB[6], midiChan[6]);
-                midiB.sendControlChange(6, secondDataByte[6] / nrpnDivisor, midiChan[6]);
-                midiB.sendControlChange(38, secondDataByte[6] % nrpnDivisor, midiChan[6]);
+                midiB.sendControlChange(nrpnMsb, ctrlrNrA[6], midiChan[6]);
+                midiB.sendControlChange(nrpnLsb, ctrlrNrB[6], midiChan[6]);
+                midiB.sendControlChange(6, patchValue[6] / nrpnDivisor, midiChan[6]);
+                midiB.sendControlChange(38, patchValue[6] % nrpnDivisor, midiChan[6]);
                 digitalWrite(out2LED, LOW);
               }
               break;
             case 3:
               if(isMidiOut1[6] == true) {
-                midiA.sendControlChange(rpnMsb, firstDataByte[6], midiChan[6]);
-                midiA.sendControlChange(rpnLsb, firstDataByteB[6], midiChan[6]);
-                midiA.sendControlChange(6, secondDataByte[6] / nrpnDivisor, midiChan[6]);
-                midiA.sendControlChange(38, secondDataByte[6] % nrpnDivisor, midiChan[6]);
+                midiA.sendControlChange(rpnMsb, ctrlrNrA[6], midiChan[6]);
+                midiA.sendControlChange(rpnLsb, ctrlrNrB[6], midiChan[6]);
+                midiA.sendControlChange(6, patchValue[6] / nrpnDivisor, midiChan[6]);
+                midiA.sendControlChange(38, patchValue[6] % nrpnDivisor, midiChan[6]);
               }
               else {
                 //send command via MIDI Out 2
                 digitalWrite(out2LED, HIGH);
-                midiB.sendControlChange(rpnMsb, firstDataByte[6], midiChan[6]);
-                midiB.sendControlChange(rpnLsb, firstDataByteB[6], midiChan[6]);
-                midiB.sendControlChange(6, secondDataByte[6] / nrpnDivisor, midiChan[6]);
-                midiB.sendControlChange(38, secondDataByte[6] % nrpnDivisor, midiChan[6]);
+                midiB.sendControlChange(rpnMsb, ctrlrNrA[6], midiChan[6]);
+                midiB.sendControlChange(rpnLsb, ctrlrNrB[6], midiChan[6]);
+                midiB.sendControlChange(6, patchValue[6] / nrpnDivisor, midiChan[6]);
+                midiB.sendControlChange(38, patchValue[6] % nrpnDivisor, midiChan[6]);
                 digitalWrite(out2LED, LOW);
               }
               break;
             case 4:
               if(isMidiOut1[6] == true) {
-                midiA.sendControlChange(nrpnMsb, firstDataByte[6], midiChan[6]);
-                midiA.sendControlChange(nrpnLsb, firstDataByteB[6], midiChan[6]);
-                midiA.sendControlChange(6, secondDataByte[6], midiChan[6]);
+                midiA.sendControlChange(nrpnMsb, ctrlrNrA[6], midiChan[6]);
+                midiA.sendControlChange(nrpnLsb, ctrlrNrB[6], midiChan[6]);
+                midiA.sendControlChange(6, patchValue[6], midiChan[6]);
               }
               else {
                 //send command via MIDI Out 2
                 digitalWrite(out2LED, HIGH);
-                midiB.sendControlChange(nrpnMsb, firstDataByte[6], midiChan[6]);
-                midiB.sendControlChange(nrpnLsb, firstDataByteB[6], midiChan[6]);
-                midiB.sendControlChange(6, secondDataByte[6], midiChan[6]);
+                midiB.sendControlChange(nrpnMsb, ctrlrNrA[6], midiChan[6]);
+                midiB.sendControlChange(nrpnLsb, ctrlrNrB[6], midiChan[6]);
+                midiB.sendControlChange(6, patchValue[6], midiChan[6]);
                 digitalWrite(out2LED, LOW);
               }
               break;
             case 5: 
               if(isMidiOut1[6] == true) {
                 // send command via MIDI Out 1
-                midiA.sendControlChange(firstDataByte[6], secondDataByte[6] / nrpnDivisor, midiChan[6]);
-                midiA.sendControlChange(firstDataByteB[6], secondDataByte[6] % nrpnDivisor, midiChan[6]);
+                midiA.sendControlChange(ctrlrNrA[6], patchValue[6] / nrpnDivisor, midiChan[6]);
+                midiA.sendControlChange(ctrlrNrB[6], patchValue[6] % nrpnDivisor, midiChan[6]);
               }
               else {
                 //send command via MIDI Out 2
                 digitalWrite(out2LED, HIGH);
-                midiB.sendControlChange(firstDataByte[6], secondDataByte[6] / nrpnDivisor, midiChan[6]);
-                midiB.sendControlChange(firstDataByteB[6], secondDataByte[6] % nrpnDivisor, midiChan[6]);
+                midiB.sendControlChange(ctrlrNrA[6], patchValue[6] / nrpnDivisor, midiChan[6]);
+                midiB.sendControlChange(ctrlrNrB[6], patchValue[6] % nrpnDivisor, midiChan[6]);
                 digitalWrite(out2LED, LOW);
               }
               break;
             case 6:
                 // CV OUT 1
-                dac.outputA(secondDataByte[6]);                
+                dac.outputA(patchValue[6]);                
                 break;
               case 7:
-                dac.outputB(secondDataByte[6]);                
+                dac.outputB(patchValue[6]);                
                 break;
               case 8:
-                dac2.outputA(secondDataByte[6]);                
+                dac2.outputA(patchValue[6]);                
                 break;
               case 9:
-                dac2.outputB(secondDataByte[6]);                
+                dac2.outputB(patchValue[6]);                
                 break;
               case 10:
-                dac3.outputA(secondDataByte[6]);                
+                dac3.outputA(patchValue[6]);                
                 break;
               case 11:
-                dac3.outputB(secondDataByte[6]);                
+                dac3.outputB(patchValue[6]);                
                 break;
               case 12:
-                dac4.outputA(secondDataByte[6]);                
+                dac4.outputA(patchValue[6]);                
                 break;
               case 13:
-                dac4.outputB(secondDataByte[6]);                
+                dac4.outputB(patchValue[6]);                
                 break;
       }      
     }
   }
   if(mute[7] == false) {
     if(isDmp[7] == false) {
-      secondDataByte[7] = map(analogPinValue[sensorTypeIdentifier[7]], minInValue[7], maxInValue[7], minOutValue[7], maxOutValue[7]);
-      secondDataByte[7] = constrain(secondDataByte[7], minOutValue[7], maxOutValue[7]);
+      patchValue[7] = map(analogPinValue[sensorTypeIdentifier[7]], minInValue[7], maxInValue[7], minOutValue[7], maxOutValue[7]);
+      patchValue[7] = constrain(patchValue[7], minOutValue[7], maxOutValue[7]);
       switch (commandIdentifier[7]) {
             case 1: 
               if(isMidiOut1[7] == true) {
                 // send command via MIDI Out 1
-                midiA.sendControlChange(firstDataByte[7], secondDataByte[7], midiChan[7]);
+                midiA.sendControlChange(ctrlrNrA[7], patchValue[7], midiChan[7]);
               }
               else {
                 //send command via MIDI Out 2
                 digitalWrite(out2LED, HIGH);
-                midiB.sendControlChange(firstDataByte[7], secondDataByte[7], midiChan[7]);
+                midiB.sendControlChange(ctrlrNrA[7], patchValue[7], midiChan[7]);
                 digitalWrite(out2LED, LOW);
               }
               break;
             case 2:
               if(isMidiOut1[7] == true) {
-                midiA.sendControlChange(nrpnMsb, firstDataByte[7], midiChan[7]);
-                midiA.sendControlChange(nrpnLsb, firstDataByteB[7], midiChan[7]);
-                midiA.sendControlChange(6, secondDataByte[7] / nrpnDivisor, midiChan[7]);
-                midiA.sendControlChange(38, secondDataByte[7] % nrpnDivisor, midiChan[7]);
+                midiA.sendControlChange(nrpnMsb, ctrlrNrA[7], midiChan[7]);
+                midiA.sendControlChange(nrpnLsb, ctrlrNrB[7], midiChan[7]);
+                midiA.sendControlChange(6, patchValue[7] / nrpnDivisor, midiChan[7]);
+                midiA.sendControlChange(38, patchValue[7] % nrpnDivisor, midiChan[7]);
               }
               else {
                 //send command via MIDI Out 2
                 digitalWrite(out2LED, HIGH);
-                midiB.sendControlChange(nrpnMsb, firstDataByte[7], midiChan[7]);
-                midiB.sendControlChange(nrpnLsb, firstDataByteB[7], midiChan[7]);
-                midiB.sendControlChange(6, secondDataByte[7] / nrpnDivisor, midiChan[7]);
-                midiB.sendControlChange(38, secondDataByte[7] % nrpnDivisor, midiChan[7]);
+                midiB.sendControlChange(nrpnMsb, ctrlrNrA[7], midiChan[7]);
+                midiB.sendControlChange(nrpnLsb, ctrlrNrB[7], midiChan[7]);
+                midiB.sendControlChange(6, patchValue[7] / nrpnDivisor, midiChan[7]);
+                midiB.sendControlChange(38, patchValue[7] % nrpnDivisor, midiChan[7]);
                 digitalWrite(out2LED, LOW);
               }
               break;
             case 3:
               if(isMidiOut1[7] == true) {
-                midiA.sendControlChange(rpnMsb, firstDataByte[7], midiChan[7]);
-                midiA.sendControlChange(rpnLsb, firstDataByteB[7], midiChan[7]);
-                midiA.sendControlChange(6, secondDataByte[7] / nrpnDivisor, midiChan[7]);
-                midiA.sendControlChange(38, secondDataByte[7] % nrpnDivisor, midiChan[7]);
+                midiA.sendControlChange(rpnMsb, ctrlrNrA[7], midiChan[7]);
+                midiA.sendControlChange(rpnLsb, ctrlrNrB[7], midiChan[7]);
+                midiA.sendControlChange(6, patchValue[7] / nrpnDivisor, midiChan[7]);
+                midiA.sendControlChange(38, patchValue[7] % nrpnDivisor, midiChan[7]);
               }
               else {
                 //send command via MIDI Out 2
                 digitalWrite(out2LED, HIGH);
-                midiB.sendControlChange(rpnMsb, firstDataByte[7], midiChan[7]);
-                midiB.sendControlChange(rpnLsb, firstDataByteB[7], midiChan[7]);
-                midiB.sendControlChange(6, secondDataByte[7] / nrpnDivisor, midiChan[7]);
-                midiB.sendControlChange(38, secondDataByte[7] % nrpnDivisor, midiChan[7]);
+                midiB.sendControlChange(rpnMsb, ctrlrNrA[7], midiChan[7]);
+                midiB.sendControlChange(rpnLsb, ctrlrNrB[7], midiChan[7]);
+                midiB.sendControlChange(6, patchValue[7] / nrpnDivisor, midiChan[7]);
+                midiB.sendControlChange(38, patchValue[7] % nrpnDivisor, midiChan[7]);
                 digitalWrite(out2LED, LOW);
               }
               break;
             case 4:
               if(isMidiOut1[7] == true) {
-                midiA.sendControlChange(nrpnMsb, firstDataByte[7], midiChan[7]);
-                midiA.sendControlChange(nrpnLsb, firstDataByteB[7], midiChan[7]);
-                midiA.sendControlChange(6, secondDataByte[7], midiChan[7]);
+                midiA.sendControlChange(nrpnMsb, ctrlrNrA[7], midiChan[7]);
+                midiA.sendControlChange(nrpnLsb, ctrlrNrB[7], midiChan[7]);
+                midiA.sendControlChange(6, patchValue[7], midiChan[7]);
               }
               else {
                 //send command via MIDI Out 2
                 digitalWrite(out2LED, HIGH);
-                midiB.sendControlChange(nrpnMsb, firstDataByte[7], midiChan[7]);
-                midiB.sendControlChange(nrpnLsb, firstDataByteB[7], midiChan[7]);
-                midiB.sendControlChange(6, secondDataByte[7], midiChan[7]);
+                midiB.sendControlChange(nrpnMsb, ctrlrNrA[7], midiChan[7]);
+                midiB.sendControlChange(nrpnLsb, ctrlrNrB[7], midiChan[7]);
+                midiB.sendControlChange(6, patchValue[7], midiChan[7]);
                 digitalWrite(out2LED, LOW);
               }
               break;
             case 5: 
               if(isMidiOut1[7] == true) {
                 // send command via MIDI Out 1
-                midiA.sendControlChange(firstDataByte[7], secondDataByte[7] / nrpnDivisor, midiChan[7]);
-                midiA.sendControlChange(firstDataByteB[7], secondDataByte[7] % nrpnDivisor, midiChan[7]);
+                midiA.sendControlChange(ctrlrNrA[7], patchValue[7] / nrpnDivisor, midiChan[7]);
+                midiA.sendControlChange(ctrlrNrB[7], patchValue[7] % nrpnDivisor, midiChan[7]);
               }
               else {
                 //send command via MIDI Out 2
                 digitalWrite(out2LED, HIGH);
-                midiB.sendControlChange(firstDataByte[7], secondDataByte[7] / nrpnDivisor, midiChan[7]);
-                midiB.sendControlChange(firstDataByteB[7], secondDataByte[7] % nrpnDivisor, midiChan[7]);
+                midiB.sendControlChange(ctrlrNrA[7], patchValue[7] / nrpnDivisor, midiChan[7]);
+                midiB.sendControlChange(ctrlrNrB[7], patchValue[7] % nrpnDivisor, midiChan[7]);
                 digitalWrite(out2LED, LOW);
               }
               break;
             case 6:
                 // CV OUT 1
-                dac.outputA(secondDataByte[7]);                
+                dac.outputA(patchValue[7]);                
                 break;
               case 7:
-                dac.outputB(secondDataByte[7]);                
+                dac.outputB(patchValue[7]);                
                 break;
               case 8:
-                dac2.outputA(secondDataByte[7]);                
+                dac2.outputA(patchValue[7]);                
                 break;
               case 9:
-                dac2.outputB(secondDataByte[7]);                
+                dac2.outputB(patchValue[7]);                
                 break;
               case 10:
-                dac3.outputA(secondDataByte[7]);                
+                dac3.outputA(patchValue[7]);                
                 break;
               case 11:
-                dac3.outputB(secondDataByte[7]);                
+                dac3.outputB(patchValue[7]);                
                 break;
               case 12:
-                dac4.outputA(secondDataByte[7]);                
+                dac4.outputA(patchValue[7]);                
                 break;
               case 13:
-                dac4.outputB(secondDataByte[7]);                
+                dac4.outputB(patchValue[7]);                
                 break;
       }      
     }
   }
   if(mute[8] == false) {
     if(isDmp[8] == false) {
-      secondDataByte[8] = map(analogPinValue[sensorTypeIdentifier[8]], minInValue[8], maxInValue[8], minOutValue[8], maxOutValue[8]);
-      secondDataByte[8] = constrain(secondDataByte[8], minOutValue[8], maxOutValue[8]);
+      patchValue[8] = map(analogPinValue[sensorTypeIdentifier[8]], minInValue[8], maxInValue[8], minOutValue[8], maxOutValue[8]);
+      patchValue[8] = constrain(patchValue[8], minOutValue[8], maxOutValue[8]);
       switch (commandIdentifier[8]) {
             case 1: 
               if(isMidiOut1[8] == true) {
                 // send command via MIDI Out 1
-                midiA.sendControlChange(firstDataByte[8], secondDataByte[8], midiChan[8]);
+                midiA.sendControlChange(ctrlrNrA[8], patchValue[8], midiChan[8]);
               }
               else {
                 //send command via MIDI Out 2
                 digitalWrite(out2LED, HIGH);
-                midiB.sendControlChange(firstDataByte[8], secondDataByte[8], midiChan[8]);
+                midiB.sendControlChange(ctrlrNrA[8], patchValue[8], midiChan[8]);
                 digitalWrite(out2LED, LOW);
               }
               break;
             case 2:
               if(isMidiOut1[8] == true) {
-                midiA.sendControlChange(nrpnMsb, firstDataByte[8], midiChan[8]);
-                midiA.sendControlChange(nrpnLsb, firstDataByteB[8], midiChan[8]);
-                midiA.sendControlChange(6, secondDataByte[8] / nrpnDivisor, midiChan[8]);
-                midiA.sendControlChange(38, secondDataByte[8] % nrpnDivisor, midiChan[8]);
+                midiA.sendControlChange(nrpnMsb, ctrlrNrA[8], midiChan[8]);
+                midiA.sendControlChange(nrpnLsb, ctrlrNrB[8], midiChan[8]);
+                midiA.sendControlChange(6, patchValue[8] / nrpnDivisor, midiChan[8]);
+                midiA.sendControlChange(38, patchValue[8] % nrpnDivisor, midiChan[8]);
               }
               else {
                 //send command via MIDI Out 2
                 digitalWrite(out2LED, HIGH);
-                midiB.sendControlChange(nrpnMsb, firstDataByte[8], midiChan[8]);
-                midiB.sendControlChange(nrpnLsb, firstDataByteB[8], midiChan[8]);
-                midiB.sendControlChange(6, secondDataByte[8] / nrpnDivisor, midiChan[8]);
-                midiB.sendControlChange(38, secondDataByte[8] % nrpnDivisor, midiChan[8]);
+                midiB.sendControlChange(nrpnMsb, ctrlrNrA[8], midiChan[8]);
+                midiB.sendControlChange(nrpnLsb, ctrlrNrB[8], midiChan[8]);
+                midiB.sendControlChange(6, patchValue[8] / nrpnDivisor, midiChan[8]);
+                midiB.sendControlChange(38, patchValue[8] % nrpnDivisor, midiChan[8]);
                 digitalWrite(out2LED, LOW);
               }
               break;
             case 3:
               if(isMidiOut1[8] == true) {
-                midiA.sendControlChange(rpnMsb, firstDataByte[8], midiChan[8]);
-                midiA.sendControlChange(rpnLsb, firstDataByteB[8], midiChan[8]);
-                midiA.sendControlChange(6, secondDataByte[8] / nrpnDivisor, midiChan[8]);
-                midiA.sendControlChange(38, secondDataByte[8] % nrpnDivisor, midiChan[8]);
+                midiA.sendControlChange(rpnMsb, ctrlrNrA[8], midiChan[8]);
+                midiA.sendControlChange(rpnLsb, ctrlrNrB[8], midiChan[8]);
+                midiA.sendControlChange(6, patchValue[8] / nrpnDivisor, midiChan[8]);
+                midiA.sendControlChange(38, patchValue[8] % nrpnDivisor, midiChan[8]);
               }
               else {
                 //send command via MIDI Out 2
                 digitalWrite(out2LED, HIGH);
-                midiB.sendControlChange(rpnMsb, firstDataByte[8], midiChan[8]);
-                midiB.sendControlChange(rpnLsb, firstDataByteB[8], midiChan[8]);
-                midiB.sendControlChange(6, secondDataByte[8] / nrpnDivisor, midiChan[8]);
-                midiB.sendControlChange(38, secondDataByte[8] % nrpnDivisor, midiChan[8]);
+                midiB.sendControlChange(rpnMsb, ctrlrNrA[8], midiChan[8]);
+                midiB.sendControlChange(rpnLsb, ctrlrNrB[8], midiChan[8]);
+                midiB.sendControlChange(6, patchValue[8] / nrpnDivisor, midiChan[8]);
+                midiB.sendControlChange(38, patchValue[8] % nrpnDivisor, midiChan[8]);
                 digitalWrite(out2LED, LOW);
               }
               break;
             case 4:
               if(isMidiOut1[8] == true) {
-                midiA.sendControlChange(nrpnMsb, firstDataByte[8], midiChan[8]);
-                midiA.sendControlChange(nrpnLsb, firstDataByteB[8], midiChan[8]);
-                midiA.sendControlChange(6, secondDataByte[8], midiChan[8]);
+                midiA.sendControlChange(nrpnMsb, ctrlrNrA[8], midiChan[8]);
+                midiA.sendControlChange(nrpnLsb, ctrlrNrB[8], midiChan[8]);
+                midiA.sendControlChange(6, patchValue[8], midiChan[8]);
               }
               else {
                 //send command via MIDI Out 2
                 digitalWrite(out2LED, HIGH);
-                midiB.sendControlChange(nrpnMsb, firstDataByte[8], midiChan[8]);
-                midiB.sendControlChange(nrpnLsb, firstDataByteB[8], midiChan[8]);
-                midiB.sendControlChange(6, secondDataByte[8], midiChan[8]);
+                midiB.sendControlChange(nrpnMsb, ctrlrNrA[8], midiChan[8]);
+                midiB.sendControlChange(nrpnLsb, ctrlrNrB[8], midiChan[8]);
+                midiB.sendControlChange(6, patchValue[8], midiChan[8]);
                 digitalWrite(out2LED, LOW);
               }
               break;
             case 5: 
               if(isMidiOut1[8] == true) {
                 // send command via MIDI Out 1
-                midiA.sendControlChange(firstDataByte[8], secondDataByte[8] / nrpnDivisor, midiChan[8]);
-                midiA.sendControlChange(firstDataByteB[8], secondDataByte[8] % nrpnDivisor, midiChan[8]);
+                midiA.sendControlChange(ctrlrNrA[8], patchValue[8] / nrpnDivisor, midiChan[8]);
+                midiA.sendControlChange(ctrlrNrB[8], patchValue[8] % nrpnDivisor, midiChan[8]);
               }
               else {
                 //send command via MIDI Out 2
                 digitalWrite(out2LED, HIGH);
-                midiB.sendControlChange(firstDataByte[8], secondDataByte[8] / nrpnDivisor, midiChan[8]);
-                midiB.sendControlChange(firstDataByteB[8], secondDataByte[8] % nrpnDivisor, midiChan[8]);
+                midiB.sendControlChange(ctrlrNrA[8], patchValue[8] / nrpnDivisor, midiChan[8]);
+                midiB.sendControlChange(ctrlrNrB[8], patchValue[8] % nrpnDivisor, midiChan[8]);
                 digitalWrite(out2LED, LOW);
               }
               break;
             case 6:
                 // CV OUT 1
-                dac.outputA(secondDataByte[8]);                
+                dac.outputA(patchValue[8]);                
                 break;
               case 7:
-                dac.outputB(secondDataByte[8]);                
+                dac.outputB(patchValue[8]);                
                 break;
               case 8:
-                dac2.outputA(secondDataByte[8]);                
+                dac2.outputA(patchValue[8]);                
                 break;
               case 9:
-                dac2.outputB(secondDataByte[8]);                
+                dac2.outputB(patchValue[8]);                
                 break;
               case 10:
-                dac3.outputA(secondDataByte[8]);                
+                dac3.outputA(patchValue[8]);                
                 break;
               case 11:
-                dac3.outputB(secondDataByte[8]);                
+                dac3.outputB(patchValue[8]);                
                 break;
               case 12:
-                dac4.outputA(secondDataByte[8]);                
+                dac4.outputA(patchValue[8]);                
                 break;
               case 13:
-                dac4.outputB(secondDataByte[8]);                
+                dac4.outputB(patchValue[8]);                
                 break;
       }      
     }
   }
   if(mute[9] == false) {
     if(isDmp[9] == false) {
-      secondDataByte[9] = map(analogPinValue[sensorTypeIdentifier[9]], minInValue[9], maxInValue[9], minOutValue[9], maxOutValue[9]);
-      secondDataByte[9] = constrain(secondDataByte[9], minOutValue[9], maxOutValue[9]);
+      patchValue[9] = map(analogPinValue[sensorTypeIdentifier[9]], minInValue[9], maxInValue[9], minOutValue[9], maxOutValue[9]);
+      patchValue[9] = constrain(patchValue[9], minOutValue[9], maxOutValue[9]);
       switch (commandIdentifier[9]) {
             case 1: 
               if(isMidiOut1[9] == true) {
                 // send command via MIDI Out 1
-                midiA.sendControlChange(firstDataByte[9], secondDataByte[9], midiChan[9]);
+                midiA.sendControlChange(ctrlrNrA[9], patchValue[9], midiChan[9]);
               }
               else {
                 //send command via MIDI Out 2
                 digitalWrite(out2LED, HIGH);
-                midiB.sendControlChange(firstDataByte[9], secondDataByte[9], midiChan[9]);
+                midiB.sendControlChange(ctrlrNrA[9], patchValue[9], midiChan[9]);
                 digitalWrite(out2LED, LOW);
               }
               break;
             case 2:
               if(isMidiOut1[9] == true) {
-                midiA.sendControlChange(nrpnMsb, firstDataByte[9], midiChan[9]);
-                midiA.sendControlChange(nrpnLsb, firstDataByteB[9], midiChan[9]);
-                midiA.sendControlChange(6, secondDataByte[9] / nrpnDivisor, midiChan[9]);
-                midiA.sendControlChange(38, secondDataByte[9] % nrpnDivisor, midiChan[9]);
+                midiA.sendControlChange(nrpnMsb, ctrlrNrA[9], midiChan[9]);
+                midiA.sendControlChange(nrpnLsb, ctrlrNrB[9], midiChan[9]);
+                midiA.sendControlChange(6, patchValue[9] / nrpnDivisor, midiChan[9]);
+                midiA.sendControlChange(38, patchValue[9] % nrpnDivisor, midiChan[9]);
               }
               else {
                 //send command via MIDI Out 2
                 digitalWrite(out2LED, HIGH);
-                midiB.sendControlChange(nrpnMsb, firstDataByte[9], midiChan[9]);
-                midiB.sendControlChange(nrpnLsb, firstDataByteB[9], midiChan[9]);
-                midiB.sendControlChange(6, secondDataByte[9] / nrpnDivisor, midiChan[9]);
-                midiB.sendControlChange(38, secondDataByte[9] % nrpnDivisor, midiChan[9]);
+                midiB.sendControlChange(nrpnMsb, ctrlrNrA[9], midiChan[9]);
+                midiB.sendControlChange(nrpnLsb, ctrlrNrB[9], midiChan[9]);
+                midiB.sendControlChange(6, patchValue[9] / nrpnDivisor, midiChan[9]);
+                midiB.sendControlChange(38, patchValue[9] % nrpnDivisor, midiChan[9]);
                 digitalWrite(out2LED, LOW);
               }
               break;
             case 3:
               if(isMidiOut1[9] == true) {
-                midiA.sendControlChange(rpnMsb, firstDataByte[9], midiChan[9]);
-                midiA.sendControlChange(rpnLsb, firstDataByteB[9], midiChan[9]);
-                midiA.sendControlChange(6, secondDataByte[9] / nrpnDivisor, midiChan[9]);
-                midiA.sendControlChange(38, secondDataByte[9] % nrpnDivisor, midiChan[9]);
+                midiA.sendControlChange(rpnMsb, ctrlrNrA[9], midiChan[9]);
+                midiA.sendControlChange(rpnLsb, ctrlrNrB[9], midiChan[9]);
+                midiA.sendControlChange(6, patchValue[9] / nrpnDivisor, midiChan[9]);
+                midiA.sendControlChange(38, patchValue[9] % nrpnDivisor, midiChan[9]);
               }
               else {
                 //send command via MIDI Out 2
                 digitalWrite(out2LED, HIGH);
-                midiB.sendControlChange(rpnMsb, firstDataByte[9], midiChan[9]);
-                midiB.sendControlChange(rpnLsb, firstDataByteB[9], midiChan[9]);
-                midiB.sendControlChange(6, secondDataByte[9] / nrpnDivisor, midiChan[9]);
-                midiB.sendControlChange(38, secondDataByte[9] % nrpnDivisor, midiChan[9]);
+                midiB.sendControlChange(rpnMsb, ctrlrNrA[9], midiChan[9]);
+                midiB.sendControlChange(rpnLsb, ctrlrNrB[9], midiChan[9]);
+                midiB.sendControlChange(6, patchValue[9] / nrpnDivisor, midiChan[9]);
+                midiB.sendControlChange(38, patchValue[9] % nrpnDivisor, midiChan[9]);
                 digitalWrite(out2LED, LOW);
               }
               break;
             case 4:
               if(isMidiOut1[9] == true) {
-                midiA.sendControlChange(nrpnMsb, firstDataByte[9], midiChan[9]);
-                midiA.sendControlChange(nrpnLsb, firstDataByteB[9], midiChan[9]);
-                midiA.sendControlChange(6, secondDataByte[9], midiChan[9]);
+                midiA.sendControlChange(nrpnMsb, ctrlrNrA[9], midiChan[9]);
+                midiA.sendControlChange(nrpnLsb, ctrlrNrB[9], midiChan[9]);
+                midiA.sendControlChange(6, patchValue[9], midiChan[9]);
               }
               else {
                 //send command via MIDI Out 2
                 digitalWrite(out2LED, HIGH);
-                midiB.sendControlChange(nrpnMsb, firstDataByte[9], midiChan[9]);
-                midiB.sendControlChange(nrpnLsb, firstDataByteB[9], midiChan[9]);
-                midiB.sendControlChange(6, secondDataByte[9], midiChan[9]);
+                midiB.sendControlChange(nrpnMsb, ctrlrNrA[9], midiChan[9]);
+                midiB.sendControlChange(nrpnLsb, ctrlrNrB[9], midiChan[9]);
+                midiB.sendControlChange(6, patchValue[9], midiChan[9]);
                 digitalWrite(out2LED, LOW);
               }
               break;
             case 5: 
               if(isMidiOut1[9] == true) {
                 // send command via MIDI Out 1
-                midiA.sendControlChange(firstDataByte[9], secondDataByte[9] / nrpnDivisor, midiChan[9]);
-                midiA.sendControlChange(firstDataByteB[9], secondDataByte[9] % nrpnDivisor, midiChan[9]);
+                midiA.sendControlChange(ctrlrNrA[9], patchValue[9] / nrpnDivisor, midiChan[9]);
+                midiA.sendControlChange(ctrlrNrB[9], patchValue[9] % nrpnDivisor, midiChan[9]);
               }
               else {
                 //send command via MIDI Out 2
                 digitalWrite(out2LED, HIGH);
-                midiB.sendControlChange(firstDataByte[9], secondDataByte[9] / nrpnDivisor, midiChan[9]);
-                midiB.sendControlChange(firstDataByteB[9], secondDataByte[9] % nrpnDivisor, midiChan[9]);
+                midiB.sendControlChange(ctrlrNrA[9], patchValue[9] / nrpnDivisor, midiChan[9]);
+                midiB.sendControlChange(ctrlrNrB[9], patchValue[9] % nrpnDivisor, midiChan[9]);
                 digitalWrite(out2LED, LOW);
               }
               break;
             case 6:
                 // CV OUT 1
-                dac.outputA(secondDataByte[9]);                
+                dac.outputA(patchValue[9]);                
                 break;
               case 7:
-                dac.outputB(secondDataByte[9]);                
+                dac.outputB(patchValue[9]);                
                 break;
               case 8:
-                dac2.outputA(secondDataByte[9]);                
+                dac2.outputA(patchValue[9]);                
                 break;
               case 9:
-                dac2.outputB(secondDataByte[9]);                
+                dac2.outputB(patchValue[9]);                
                 break;
               case 10:
-                dac3.outputA(secondDataByte[9]);                
+                dac3.outputA(patchValue[9]);                
                 break;
               case 11:
-                dac3.outputB(secondDataByte[9]);                
+                dac3.outputB(patchValue[9]);                
                 break;
               case 12:
-                dac4.outputA(secondDataByte[9]);                
+                dac4.outputA(patchValue[9]);                
                 break;
               case 13:
-                dac4.outputB(secondDataByte[9]);                
+                dac4.outputB(patchValue[9]);                
                 break;
       }      
     }
@@ -8809,261 +8829,261 @@ void drawLiveValuesA () {
   
   switch (commandIdentifier[0]) {
     case 1:
-      tft.drawPixel(locator, 183 - secondDataByte[0], COLOR1);
+      tft.drawPixel(locator, 183 - patchValue[0], COLOR1);
       break;
     case 2:
-      iBuff = secondDataByte[0] >> 7;
+      iBuff = patchValue[0] >> 7;
       tft.drawPixel(locator, 183 - iBuff, COLOR1);
       break;
     case 3:
-      iBuff = secondDataByte[0] >> 7;
+      iBuff = patchValue[0] >> 7;
       tft.drawPixel(locator, 183 - iBuff, COLOR1);
       break;
     case 4:
-      tft.drawPixel(locator, 183 - secondDataByte[0], COLOR1);
+      tft.drawPixel(locator, 183 - patchValue[0], COLOR1);
       break;
     case 5:
-      iBuff = secondDataByte[0] >> 7;
+      iBuff = patchValue[0] >> 7;
       tft.drawPixel(locator, 183 - iBuff, COLOR1);
       break;
     case 6:
-      iBuff = secondDataByte[0] >> 5;
+      iBuff = patchValue[0] >> 5;
       tft.drawPixel(locator, 183 - iBuff, COLOR1);
       break;
     case 7:
-      iBuff = secondDataByte[0] >> 5;
+      iBuff = patchValue[0] >> 5;
       tft.drawPixel(locator, 183 - iBuff, COLOR1);
       break;
     case 8:
-      iBuff = secondDataByte[0] >> 5;
+      iBuff = patchValue[0] >> 5;
       tft.drawPixel(locator, 183 - iBuff, COLOR1);
       break;
     case 9:
-      iBuff = secondDataByte[0] >> 5;
+      iBuff = patchValue[0] >> 5;
       tft.drawPixel(locator, 183 - iBuff, COLOR1);
       break;
     case 10:
-      iBuff = secondDataByte[0] >> 5;
+      iBuff = patchValue[0] >> 5;
       tft.drawPixel(locator, 183 - iBuff, COLOR1);
       break;
     case 11:
-      iBuff = secondDataByte[0] >> 5;
+      iBuff = patchValue[0] >> 5;
       tft.drawPixel(locator, 183 - iBuff, COLOR1);
       break;
     case 12:
-      iBuff = secondDataByte[0] >> 5;
+      iBuff = patchValue[0] >> 5;
       tft.drawPixel(locator, 183 - iBuff, COLOR1);
       break;
     case 13:
-      iBuff = secondDataByte[0] >> 5;
+      iBuff = patchValue[0] >> 5;
       tft.drawPixel(locator, 183 - iBuff, COLOR1);
       break;
   }
   switch (commandIdentifier[1]) {
     case 1:
-      tft.drawPixel(locator, 183 - secondDataByte[1], COLOR2);
+      tft.drawPixel(locator, 183 - patchValue[1], COLOR2);
       break;
     case 2:
-      iBuff = secondDataByte[1] >> 7;
+      iBuff = patchValue[1] >> 7;
       tft.drawPixel(locator, 183 - iBuff, COLOR2);
       break;
     case 3:
-      iBuff = secondDataByte[1] >> 7;
+      iBuff = patchValue[1] >> 7;
       tft.drawPixel(locator, 183 - iBuff, COLOR2);
       break;
     case 4:
-      tft.drawPixel(locator, 183 - secondDataByte[1], COLOR2);
+      tft.drawPixel(locator, 183 - patchValue[1], COLOR2);
       break;
     case 5:
-      iBuff = secondDataByte[1] >> 7;
+      iBuff = patchValue[1] >> 7;
       tft.drawPixel(locator, 183 - iBuff, COLOR2);
       break;
     case 6:
-      iBuff = secondDataByte[1] >> 5;
+      iBuff = patchValue[1] >> 5;
       tft.drawPixel(locator, 183 - iBuff, COLOR2);
       break;
     case 7:
-      iBuff = secondDataByte[1] >> 5;
+      iBuff = patchValue[1] >> 5;
       tft.drawPixel(locator, 183 - iBuff, COLOR2);
       break;
     case 8:
-      iBuff = secondDataByte[1] >> 5;
+      iBuff = patchValue[1] >> 5;
       tft.drawPixel(locator, 183 - iBuff, COLOR2);
       break;
     case 9:
-      iBuff = secondDataByte[1] >> 5;
+      iBuff = patchValue[1] >> 5;
       tft.drawPixel(locator, 183 - iBuff, COLOR2);
       break;
     case 10:
-      iBuff = secondDataByte[1] >> 5;
+      iBuff = patchValue[1] >> 5;
       tft.drawPixel(locator, 183 - iBuff, COLOR2);
       break;
     case 11:
-      iBuff = secondDataByte[1] >> 5;
+      iBuff = patchValue[1] >> 5;
       tft.drawPixel(locator, 183 - iBuff, COLOR2);
       break;
     case 12:
-      iBuff = secondDataByte[1] >> 5;
+      iBuff = patchValue[1] >> 5;
       tft.drawPixel(locator, 183 - iBuff, COLOR2);
       break;
     case 13:
-      iBuff = secondDataByte[1] >> 5;
+      iBuff = patchValue[1] >> 5;
       tft.drawPixel(locator, 183 - iBuff, COLOR2);
       break;
   }
   switch (commandIdentifier[2]) {
     case 1:
-      tft.drawPixel(locator, 183 - secondDataByte[2], COLOR3);
+      tft.drawPixel(locator, 183 - patchValue[2], COLOR3);
       break;
     case 2:
-      iBuff = secondDataByte[2] >> 7;
+      iBuff = patchValue[2] >> 7;
       tft.drawPixel(locator, 183 - iBuff, COLOR3);
       break;
     case 3:
-      iBuff = secondDataByte[2] >> 7;
+      iBuff = patchValue[2] >> 7;
       tft.drawPixel(locator, 183 - iBuff, COLOR3);
       break;
     case 4:
-      tft.drawPixel(locator, 183 - secondDataByte[2], COLOR3);
+      tft.drawPixel(locator, 183 - patchValue[2], COLOR3);
       break;
     case 5:
-      iBuff = secondDataByte[2] >> 7;
+      iBuff = patchValue[2] >> 7;
       tft.drawPixel(locator, 183 - iBuff, COLOR3);
       break;
     case 6:
-      iBuff = secondDataByte[2] >> 5;
+      iBuff = patchValue[2] >> 5;
       tft.drawPixel(locator, 183 - iBuff, COLOR3);
       break;
     case 7:
-      iBuff = secondDataByte[2] >> 5;
+      iBuff = patchValue[2] >> 5;
       tft.drawPixel(locator, 183 - iBuff, COLOR3);
       break;
     case 8:
-      iBuff = secondDataByte[2] >> 5;
+      iBuff = patchValue[2] >> 5;
       tft.drawPixel(locator, 183 - iBuff, COLOR3);
       break;
     case 9:
-      iBuff = secondDataByte[2] >> 5;
+      iBuff = patchValue[2] >> 5;
       tft.drawPixel(locator, 183 - iBuff, COLOR3);
       break;
     case 10:
-      iBuff = secondDataByte[2] >> 5;
+      iBuff = patchValue[2] >> 5;
       tft.drawPixel(locator, 183 - iBuff, COLOR3);
       break;
     case 11:
-      iBuff = secondDataByte[2] >> 5;
+      iBuff = patchValue[2] >> 5;
       tft.drawPixel(locator, 183 - iBuff, COLOR3);
       break;
     case 12:
-      iBuff = secondDataByte[2] >> 5;
+      iBuff = patchValue[2] >> 5;
       tft.drawPixel(locator, 183 - iBuff, COLOR3);
       break;
     case 13:
-      iBuff = secondDataByte[2] >> 5;
+      iBuff = patchValue[2] >> 5;
       tft.drawPixel(locator, 183 - iBuff, COLOR3);
       break;
   }
   switch (commandIdentifier[3]) {
     case 1:
-      tft.drawPixel(locator, 183 - secondDataByte[3], COLOR4);
+      tft.drawPixel(locator, 183 - patchValue[3], COLOR4);
       break;
     case 2:
-      iBuff = secondDataByte[3] >> 7;
+      iBuff = patchValue[3] >> 7;
       tft.drawPixel(locator, 183 - iBuff, COLOR4);
       break;
     case 3:
-      iBuff = secondDataByte[3] >> 7;
+      iBuff = patchValue[3] >> 7;
       tft.drawPixel(locator, 183 - iBuff, COLOR4);
       break;
     case 4:
-      tft.drawPixel(locator, 183 - secondDataByte[3], COLOR4);
+      tft.drawPixel(locator, 183 - patchValue[3], COLOR4);
       break;
     case 5:
-      iBuff = secondDataByte[3] >> 7;
+      iBuff = patchValue[3] >> 7;
       tft.drawPixel(locator, 183 - iBuff, COLOR4);
       break;
     case 6:
-      iBuff = secondDataByte[3] >> 5;
+      iBuff = patchValue[3] >> 5;
       tft.drawPixel(locator, 183 - iBuff, COLOR4);
       break;
     case 7:
-      iBuff = secondDataByte[3] >> 5;
+      iBuff = patchValue[3] >> 5;
       tft.drawPixel(locator, 183 - iBuff, COLOR4);
       break;
     case 8:
-      iBuff = secondDataByte[3] >> 5;
+      iBuff = patchValue[3] >> 5;
       tft.drawPixel(locator, 183 - iBuff, COLOR4);
       break;
     case 9:
-      iBuff = secondDataByte[3] >> 5;
+      iBuff = patchValue[3] >> 5;
       tft.drawPixel(locator, 183 - iBuff, COLOR4);
       break;
     case 10:
-      iBuff = secondDataByte[3] >> 5;
+      iBuff = patchValue[3] >> 5;
       tft.drawPixel(locator, 183 - iBuff, COLOR4);
       break;
     case 11:
-      iBuff = secondDataByte[3] >> 5;
+      iBuff = patchValue[3] >> 5;
       tft.drawPixel(locator, 183 - iBuff, COLOR4);
       break;
     case 12:
-      iBuff = secondDataByte[3] >> 5;
+      iBuff = patchValue[3] >> 5;
       tft.drawPixel(locator, 183 - iBuff, COLOR4);
       break;
     case 13:
-      iBuff = secondDataByte[3] >> 5;
+      iBuff = patchValue[3] >> 5;
       tft.drawPixel(locator, 183 - iBuff, COLOR4);
       break;
   }
   switch (commandIdentifier[4]) {
     case 1:
-      tft.drawPixel(locator, 183 - secondDataByte[4], COLOR5);
+      tft.drawPixel(locator, 183 - patchValue[4], COLOR5);
       break;
     case 2:
-      iBuff = secondDataByte[4] >> 7;
+      iBuff = patchValue[4] >> 7;
       tft.drawPixel(locator, 183 - iBuff, COLOR5);
       break;
     case 3:
-      iBuff = secondDataByte[4] >> 7;
+      iBuff = patchValue[4] >> 7;
       tft.drawPixel(locator, 183 - iBuff, COLOR5);
       break;
     case 4:
-      tft.drawPixel(locator, 183 - secondDataByte[4], COLOR5);
+      tft.drawPixel(locator, 183 - patchValue[4], COLOR5);
       break;
     case 5:
-      iBuff = secondDataByte[4] >> 7;
+      iBuff = patchValue[4] >> 7;
       tft.drawPixel(locator, 183 - iBuff, COLOR5);
       break;
     case 6:
-      iBuff = secondDataByte[4] >> 5;
+      iBuff = patchValue[4] >> 5;
       tft.drawPixel(locator, 183 - iBuff, COLOR5);
       break;
     case 7:
-      iBuff = secondDataByte[4] >> 5;
+      iBuff = patchValue[4] >> 5;
       tft.drawPixel(locator, 183 - iBuff, COLOR5);
       break;
     case 8:
-      iBuff = secondDataByte[4] >> 5;
+      iBuff = patchValue[4] >> 5;
       tft.drawPixel(locator, 183 - iBuff, COLOR5);
       break;
     case 9:
-      iBuff = secondDataByte[4] >> 5;
+      iBuff = patchValue[4] >> 5;
       tft.drawPixel(locator, 183 - iBuff, COLOR5);
       break;
     case 10:
-      iBuff = secondDataByte[4] >> 5;
+      iBuff = patchValue[4] >> 5;
       tft.drawPixel(locator, 183 - iBuff, COLOR5);
       break;
     case 11:
-      iBuff = secondDataByte[4] >> 5;
+      iBuff = patchValue[4] >> 5;
       tft.drawPixel(locator, 183 - iBuff, COLOR5);
       break;
     case 12:
-      iBuff = secondDataByte[4] >> 5;
+      iBuff = patchValue[4] >> 5;
       tft.drawPixel(locator, 183 - iBuff, COLOR5);
       break;
     case 13:
-      iBuff = secondDataByte[4] >> 5;
+      iBuff = patchValue[4] >> 5;
       tft.drawPixel(locator, 183 - iBuff, COLOR5);
       break;
   }
@@ -9072,261 +9092,261 @@ void drawLiveValuesA () {
   
   switch (commandIdentifier[5]) {
     case 1:
-      tft.drawPixel(locator, 315 - secondDataByte[5], COLOR6);
+      tft.drawPixel(locator, 315 - patchValue[5], COLOR6);
       break;
     case 2:
-      iBuff = secondDataByte[5] >> 7;
+      iBuff = patchValue[5] >> 7;
       tft.drawPixel(locator, 315 - iBuff, COLOR6);
       break;
     case 3:
-      iBuff = secondDataByte[5] >> 7;
+      iBuff = patchValue[5] >> 7;
       tft.drawPixel(locator, 315 - iBuff, COLOR6);
       break;
     case 4:
-      tft.drawPixel(locator, 315 - secondDataByte[5], COLOR6);
+      tft.drawPixel(locator, 315 - patchValue[5], COLOR6);
       break;
     case 5:
-      iBuff = secondDataByte[5] >> 7;
+      iBuff = patchValue[5] >> 7;
       tft.drawPixel(locator, 315 - iBuff, COLOR6);
       break;
     case 6:
-      iBuff = secondDataByte[5] >> 5;
+      iBuff = patchValue[5] >> 5;
       tft.drawPixel(locator, 315 - iBuff, COLOR6);
       break;
     case 7:
-      iBuff = secondDataByte[5] >> 5;
+      iBuff = patchValue[5] >> 5;
       tft.drawPixel(locator, 315 - iBuff, COLOR6);
       break;
     case 8:
-      iBuff = secondDataByte[5] >> 5;
+      iBuff = patchValue[5] >> 5;
       tft.drawPixel(locator, 315 - iBuff, COLOR6);
       break;
     case 9:
-      iBuff = secondDataByte[5] >> 5;
+      iBuff = patchValue[5] >> 5;
       tft.drawPixel(locator, 315 - iBuff, COLOR6);
       break;
     case 10:
-      iBuff = secondDataByte[5] >> 5;
+      iBuff = patchValue[5] >> 5;
       tft.drawPixel(locator, 315 - iBuff, COLOR6);
       break;
     case 11:
-      iBuff = secondDataByte[5] >> 5;
+      iBuff = patchValue[5] >> 5;
       tft.drawPixel(locator, 315 - iBuff, COLOR6);
       break;
     case 12:
-      iBuff = secondDataByte[5] >> 5;
+      iBuff = patchValue[5] >> 5;
       tft.drawPixel(locator, 315 - iBuff, COLOR6);
       break;
     case 13:
-      iBuff = secondDataByte[5] >> 5;
+      iBuff = patchValue[5] >> 5;
       tft.drawPixel(locator, 315 - iBuff, COLOR6);
       break;
   }
   switch (commandIdentifier[6]) {
     case 1:
-      tft.drawPixel(locator, 315 - secondDataByte[6], COLOR7);
+      tft.drawPixel(locator, 315 - patchValue[6], COLOR7);
       break;
     case 2:
-      iBuff = secondDataByte[6] >> 7;
+      iBuff = patchValue[6] >> 7;
       tft.drawPixel(locator, 315 - iBuff, COLOR7);
       break;
     case 3:
-      iBuff = secondDataByte[6] >> 7;
+      iBuff = patchValue[6] >> 7;
       tft.drawPixel(locator, 315 - iBuff, COLOR7);
       break;
     case 4:
-      tft.drawPixel(locator, 315 - secondDataByte[6], COLOR7);
+      tft.drawPixel(locator, 315 - patchValue[6], COLOR7);
       break;
     case 5:
-      iBuff = secondDataByte[6] >> 7;
+      iBuff = patchValue[6] >> 7;
       tft.drawPixel(locator, 315 - iBuff, COLOR7);
       break;
     case 6:
-      iBuff = secondDataByte[6] >> 5;
+      iBuff = patchValue[6] >> 5;
       tft.drawPixel(locator, 315 - iBuff, COLOR7);
       break;
     case 7:
-      iBuff = secondDataByte[6] >> 5;
+      iBuff = patchValue[6] >> 5;
       tft.drawPixel(locator, 315 - iBuff, COLOR7);
       break;
     case 8:
-      iBuff = secondDataByte[6] >> 5;
+      iBuff = patchValue[6] >> 5;
       tft.drawPixel(locator, 315 - iBuff, COLOR7);
       break;
     case 9:
-      iBuff = secondDataByte[6] >> 5;
+      iBuff = patchValue[6] >> 5;
       tft.drawPixel(locator, 315 - iBuff, COLOR7);
       break;
     case 10:
-      iBuff = secondDataByte[6] >> 5;
+      iBuff = patchValue[6] >> 5;
       tft.drawPixel(locator, 315 - iBuff, COLOR7);
       break;
     case 11:
-      iBuff = secondDataByte[6] >> 5;
+      iBuff = patchValue[6] >> 5;
       tft.drawPixel(locator, 315 - iBuff, COLOR7);
       break;
     case 12:
-      iBuff = secondDataByte[6] >> 5;
+      iBuff = patchValue[6] >> 5;
       tft.drawPixel(locator, 315 - iBuff, COLOR7);
       break;
     case 13:
-      iBuff = secondDataByte[6] >> 5;
+      iBuff = patchValue[6] >> 5;
       tft.drawPixel(locator, 315 - iBuff, COLOR7);
       break;
   }
   switch (commandIdentifier[7]) {
     case 1:
-      tft.drawPixel(locator, 315 - secondDataByte[7], COLOR8);
+      tft.drawPixel(locator, 315 - patchValue[7], COLOR8);
       break;
     case 2:
-      iBuff = secondDataByte[7] >> 7;
+      iBuff = patchValue[7] >> 7;
       tft.drawPixel(locator, 315 - iBuff, COLOR8);
       break;
     case 3:
-      iBuff = secondDataByte[7] >> 7;
+      iBuff = patchValue[7] >> 7;
       tft.drawPixel(locator, 315 - iBuff, COLOR8);
       break;
     case 4:
-      tft.drawPixel(locator, 315 - secondDataByte[7], COLOR8);
+      tft.drawPixel(locator, 315 - patchValue[7], COLOR8);
       break;
     case 5:
-      iBuff = secondDataByte[7] >> 7;
+      iBuff = patchValue[7] >> 7;
       tft.drawPixel(locator, 315 - iBuff, COLOR8);
       break;
     case 6:
-      iBuff = secondDataByte[7] >> 5;
+      iBuff = patchValue[7] >> 5;
       tft.drawPixel(locator, 315 - iBuff, COLOR8);
       break;
     case 7:
-      iBuff = secondDataByte[7] >> 5;
+      iBuff = patchValue[7] >> 5;
       tft.drawPixel(locator, 315 - iBuff, COLOR8);
       break;
     case 8:
-      iBuff = secondDataByte[7] >> 5;
+      iBuff = patchValue[7] >> 5;
       tft.drawPixel(locator, 315 - iBuff, COLOR8);
       break;
     case 9:
-      iBuff = secondDataByte[7] >> 5;
+      iBuff = patchValue[7] >> 5;
       tft.drawPixel(locator, 315 - iBuff, COLOR8);
       break;
     case 10:
-      iBuff = secondDataByte[7] >> 5;
+      iBuff = patchValue[7] >> 5;
       tft.drawPixel(locator, 315 - iBuff, COLOR8);
       break;
     case 11:
-      iBuff = secondDataByte[7] >> 5;
+      iBuff = patchValue[7] >> 5;
       tft.drawPixel(locator, 315 - iBuff, COLOR8);
       break;
     case 12:
-      iBuff = secondDataByte[7] >> 5;
+      iBuff = patchValue[7] >> 5;
       tft.drawPixel(locator, 315 - iBuff, COLOR8);
       break;
     case 13:
-      iBuff = secondDataByte[7] >> 5;
+      iBuff = patchValue[7] >> 5;
       tft.drawPixel(locator, 315 - iBuff, COLOR8);
       break;
   }
   switch (commandIdentifier[8]) {
     case 1:
-      tft.drawPixel(locator, 315 - secondDataByte[8], COLOR9);
+      tft.drawPixel(locator, 315 - patchValue[8], COLOR9);
       break;
     case 2:
-      iBuff = secondDataByte[8] >> 7;
+      iBuff = patchValue[8] >> 7;
       tft.drawPixel(locator, 315 - iBuff, COLOR9);
       break;
     case 3:
-      iBuff = secondDataByte[8] >> 7;
+      iBuff = patchValue[8] >> 7;
       tft.drawPixel(locator, 315 - iBuff, COLOR9);
       break;
     case 4:
-      tft.drawPixel(locator, 315 - secondDataByte[8], COLOR9);
+      tft.drawPixel(locator, 315 - patchValue[8], COLOR9);
       break;
     case 5:
-      iBuff = secondDataByte[8] >> 7;
+      iBuff = patchValue[8] >> 7;
       tft.drawPixel(locator, 315 - iBuff, COLOR9);
       break;
     case 6:
-      iBuff = secondDataByte[8] >> 5;
+      iBuff = patchValue[8] >> 5;
       tft.drawPixel(locator, 315 - iBuff, COLOR9);
       break;
     case 7:
-      iBuff = secondDataByte[8] >> 5;
+      iBuff = patchValue[8] >> 5;
       tft.drawPixel(locator, 315 - iBuff, COLOR9);
       break;
     case 8:
-      iBuff = secondDataByte[8] >> 5;
+      iBuff = patchValue[8] >> 5;
       tft.drawPixel(locator, 315 - iBuff, COLOR9);
       break;
     case 9:
-      iBuff = secondDataByte[8] >> 5;
+      iBuff = patchValue[8] >> 5;
       tft.drawPixel(locator, 315 - iBuff, COLOR9);
       break;
     case 10:
-      iBuff = secondDataByte[8] >> 5;
+      iBuff = patchValue[8] >> 5;
       tft.drawPixel(locator, 315 - iBuff, COLOR9);
       break;
     case 11:
-      iBuff = secondDataByte[8] >> 5;
+      iBuff = patchValue[8] >> 5;
       tft.drawPixel(locator, 315 - iBuff, COLOR9);
       break;
     case 12:
-      iBuff = secondDataByte[8] >> 5;
+      iBuff = patchValue[8] >> 5;
       tft.drawPixel(locator, 315 - iBuff, COLOR9);
       break;
     case 13:
-      iBuff = secondDataByte[8] >> 5;
+      iBuff = patchValue[8] >> 5;
       tft.drawPixel(locator, 315 - iBuff, COLOR9);
       break;
   }
   switch (commandIdentifier[9]) {
     case 1:
-      tft.drawPixel(locator, 315 - secondDataByte[9], COLOR0);
+      tft.drawPixel(locator, 315 - patchValue[9], COLOR0);
       break;
     case 2:
-      iBuff = secondDataByte[9] >> 7;
+      iBuff = patchValue[9] >> 7;
       tft.drawPixel(locator, 315 - iBuff, COLOR0);
       break;
     case 3:
-      iBuff = secondDataByte[9] >> 7;
+      iBuff = patchValue[9] >> 7;
       tft.drawPixel(locator, 315 - iBuff, COLOR0);
       break;
     case 4:
-      tft.drawPixel(locator, 315 - secondDataByte[9], COLOR0);
+      tft.drawPixel(locator, 315 - patchValue[9], COLOR0);
       break;
     case 5:
-      iBuff = secondDataByte[9] >> 7;
+      iBuff = patchValue[9] >> 7;
       tft.drawPixel(locator, 315 - iBuff, COLOR0);
       break;
     case 6:
-      iBuff = secondDataByte[9] >> 5;
+      iBuff = patchValue[9] >> 5;
       tft.drawPixel(locator, 315 - iBuff, COLOR0);
       break;
     case 7:
-      iBuff = secondDataByte[9] >> 5;
+      iBuff = patchValue[9] >> 5;
       tft.drawPixel(locator, 315 - iBuff, COLOR0);
       break;
     case 8:
-      iBuff = secondDataByte[9] >> 5;
+      iBuff = patchValue[9] >> 5;
       tft.drawPixel(locator, 315 - iBuff, COLOR0);
       break;
     case 9:
-      iBuff = secondDataByte[9] >> 5;
+      iBuff = patchValue[9] >> 5;
       tft.drawPixel(locator, 315 - iBuff, COLOR0);
       break;
     case 10:
-      iBuff = secondDataByte[9] >> 5;
+      iBuff = patchValue[9] >> 5;
       tft.drawPixel(locator, 315 - iBuff, COLOR0);
       break;
     case 11:
-      iBuff = secondDataByte[9] >> 5;
+      iBuff = patchValue[9] >> 5;
       tft.drawPixel(locator, 315 - iBuff, COLOR0);
       break;
     case 12:
-      iBuff = secondDataByte[9] >> 5;
+      iBuff = patchValue[9] >> 5;
       tft.drawPixel(locator, 315 - iBuff, COLOR0);
       break;
     case 13:
-      iBuff = secondDataByte[9] >> 5;
+      iBuff = patchValue[9] >> 5;
       tft.drawPixel(locator, 315 - iBuff, COLOR0);
       break;
   }
@@ -9339,261 +9359,261 @@ void drawLiveValuesB (){
   
   switch (commandIdentifier[0]) {
     case 1:
-      tft.drawPixel(locator, 157 - secondDataByte[0], COLOR1);
+      tft.drawPixel(locator, 157 - patchValue[0], COLOR1);
       break;
     case 2:
-      iBuff = secondDataByte[0] >> 7;
+      iBuff = patchValue[0] >> 7;
       tft.drawPixel(locator, 157 - iBuff, COLOR1);
       break;
     case 3:
-      iBuff = secondDataByte[0] >> 7;
+      iBuff = patchValue[0] >> 7;
       tft.drawPixel(locator, 157 - iBuff, COLOR1);
       break;
     case 4:
-      tft.drawPixel(locator, 157 - secondDataByte[0], COLOR1);
+      tft.drawPixel(locator, 157 - patchValue[0], COLOR1);
       break;
     case 5:
-      iBuff = secondDataByte[0] >> 7;
+      iBuff = patchValue[0] >> 7;
       tft.drawPixel(locator, 157 - iBuff, COLOR1);
       break;
     case 6:
-      iBuff = secondDataByte[0] >> 5;
+      iBuff = patchValue[0] >> 5;
       tft.drawPixel(locator, 157 - iBuff, COLOR1);
       break;
     case 7:
-      iBuff = secondDataByte[0] >> 5;
+      iBuff = patchValue[0] >> 5;
       tft.drawPixel(locator, 157 - iBuff, COLOR1);
       break;
     case 8:
-      iBuff = secondDataByte[0] >> 5;
+      iBuff = patchValue[0] >> 5;
       tft.drawPixel(locator, 157 - iBuff, COLOR1);
       break;
     case 9:
-      iBuff = secondDataByte[0] >> 5;
+      iBuff = patchValue[0] >> 5;
       tft.drawPixel(locator, 157 - iBuff, COLOR1);
       break;
     case 10:
-      iBuff = secondDataByte[0] >> 5;
+      iBuff = patchValue[0] >> 5;
       tft.drawPixel(locator, 157 - iBuff, COLOR1);
       break;
     case 11:
-      iBuff = secondDataByte[0] >> 5;
+      iBuff = patchValue[0] >> 5;
       tft.drawPixel(locator, 157 - iBuff, COLOR1);
       break;
     case 12:
-      iBuff = secondDataByte[0] >> 5;
+      iBuff = patchValue[0] >> 5;
       tft.drawPixel(locator, 157 - iBuff, COLOR1);
       break;
     case 13:
-      iBuff = secondDataByte[0] >> 5;
+      iBuff = patchValue[0] >> 5;
       tft.drawPixel(locator, 157 - iBuff, COLOR1);
       break;
   }
   switch (commandIdentifier[1]) {
     case 1:
-      tft.drawPixel(locator, 157 - secondDataByte[1], COLOR2);
+      tft.drawPixel(locator, 157 - patchValue[1], COLOR2);
       break;
     case 2:
-      iBuff = secondDataByte[1] >> 7;
+      iBuff = patchValue[1] >> 7;
       tft.drawPixel(locator, 157 - iBuff, COLOR2);
       break;
     case 3:
-      iBuff = secondDataByte[1] >> 7;
+      iBuff = patchValue[1] >> 7;
       tft.drawPixel(locator, 157 - iBuff, COLOR2);
       break;
     case 4:
-      tft.drawPixel(locator, 157 - secondDataByte[1], COLOR2);
+      tft.drawPixel(locator, 157 - patchValue[1], COLOR2);
       break;
     case 5:
-      iBuff = secondDataByte[1] >> 7;
+      iBuff = patchValue[1] >> 7;
       tft.drawPixel(locator, 157 - iBuff, COLOR2);
       break;
     case 6:
-      iBuff = secondDataByte[1] >> 5;
+      iBuff = patchValue[1] >> 5;
       tft.drawPixel(locator, 157 - iBuff, COLOR2);
       break;
     case 7:
-      iBuff = secondDataByte[1] >> 5;
+      iBuff = patchValue[1] >> 5;
       tft.drawPixel(locator, 157 - iBuff, COLOR2);
       break;
     case 8:
-      iBuff = secondDataByte[1] >> 5;
+      iBuff = patchValue[1] >> 5;
       tft.drawPixel(locator, 157 - iBuff, COLOR2);
       break;
     case 9:
-      iBuff = secondDataByte[1] >> 5;
+      iBuff = patchValue[1] >> 5;
       tft.drawPixel(locator, 157 - iBuff, COLOR2);
       break;
     case 10:
-      iBuff = secondDataByte[1] >> 5;
+      iBuff = patchValue[1] >> 5;
       tft.drawPixel(locator, 157 - iBuff, COLOR2);
       break;
     case 11:
-      iBuff = secondDataByte[1] >> 5;
+      iBuff = patchValue[1] >> 5;
       tft.drawPixel(locator, 157 - iBuff, COLOR2);
       break;
     case 12:
-      iBuff = secondDataByte[1] >> 5;
+      iBuff = patchValue[1] >> 5;
       tft.drawPixel(locator, 157 - iBuff, COLOR2);
       break;
     case 13:
-      iBuff = secondDataByte[1] >> 5;
+      iBuff = patchValue[1] >> 5;
       tft.drawPixel(locator, 157 - iBuff, COLOR2);
       break;
   }
   switch (commandIdentifier[2]) {
     case 1:
-      tft.drawPixel(locator, 157 - secondDataByte[2], COLOR3);
+      tft.drawPixel(locator, 157 - patchValue[2], COLOR3);
       break;
     case 2:
-      iBuff = secondDataByte[2] >> 7;
+      iBuff = patchValue[2] >> 7;
       tft.drawPixel(locator, 157 - iBuff, COLOR3);
       break;
     case 3:
-      iBuff = secondDataByte[2] >> 7;
+      iBuff = patchValue[2] >> 7;
       tft.drawPixel(locator, 157 - iBuff, COLOR3);
       break;
     case 4:
-      tft.drawPixel(locator, 157 - secondDataByte[2], COLOR3);
+      tft.drawPixel(locator, 157 - patchValue[2], COLOR3);
       break;
     case 5:
-      iBuff = secondDataByte[2] >> 7;
+      iBuff = patchValue[2] >> 7;
       tft.drawPixel(locator, 157 - iBuff, COLOR3);
       break;
     case 6:
-      iBuff = secondDataByte[2] >> 5;
+      iBuff = patchValue[2] >> 5;
       tft.drawPixel(locator, 157 - iBuff, COLOR3);
       break;
     case 7:
-      iBuff = secondDataByte[2] >> 5;
+      iBuff = patchValue[2] >> 5;
       tft.drawPixel(locator, 157 - iBuff, COLOR3);
       break;
     case 8:
-      iBuff = secondDataByte[2] >> 5;
+      iBuff = patchValue[2] >> 5;
       tft.drawPixel(locator, 157 - iBuff, COLOR3);
       break;
     case 9:
-      iBuff = secondDataByte[2] >> 5;
+      iBuff = patchValue[2] >> 5;
       tft.drawPixel(locator, 157 - iBuff, COLOR3);
       break;
     case 10:
-      iBuff = secondDataByte[2] >> 5;
+      iBuff = patchValue[2] >> 5;
       tft.drawPixel(locator, 157 - iBuff, COLOR3);
       break;
     case 11:
-      iBuff = secondDataByte[2] >> 5;
+      iBuff = patchValue[2] >> 5;
       tft.drawPixel(locator, 157 - iBuff, COLOR3);
       break;
     case 12:
-      iBuff = secondDataByte[2] >> 5;
+      iBuff = patchValue[2] >> 5;
       tft.drawPixel(locator, 157 - iBuff, COLOR3);
       break;
     case 13:
-      iBuff = secondDataByte[2] >> 5;
+      iBuff = patchValue[2] >> 5;
       tft.drawPixel(locator, 157 - iBuff, COLOR3);
       break;
   }
   switch (commandIdentifier[3]) {
     case 1:
-      tft.drawPixel(locator, 157 - secondDataByte[3], COLOR4);
+      tft.drawPixel(locator, 157 - patchValue[3], COLOR4);
       break;
     case 2:
-      iBuff = secondDataByte[3] >> 7;
+      iBuff = patchValue[3] >> 7;
       tft.drawPixel(locator, 157 - iBuff, COLOR4);
       break;
     case 3:
-      iBuff = secondDataByte[3] >> 7;
+      iBuff = patchValue[3] >> 7;
       tft.drawPixel(locator, 157 - iBuff, COLOR4);
       break;
     case 4:
-      tft.drawPixel(locator, 157 - secondDataByte[3], COLOR4);
+      tft.drawPixel(locator, 157 - patchValue[3], COLOR4);
       break;
     case 5:
-      iBuff = secondDataByte[3] >> 7;
+      iBuff = patchValue[3] >> 7;
       tft.drawPixel(locator, 157 - iBuff, COLOR4);
       break;
     case 6:
-      iBuff = secondDataByte[3] >> 5;
+      iBuff = patchValue[3] >> 5;
       tft.drawPixel(locator, 157 - iBuff, COLOR4);
       break;
     case 7:
-      iBuff = secondDataByte[3] >> 5;
+      iBuff = patchValue[3] >> 5;
       tft.drawPixel(locator, 157 - iBuff, COLOR4);
       break;
     case 8:
-      iBuff = secondDataByte[3] >> 5;
+      iBuff = patchValue[3] >> 5;
       tft.drawPixel(locator, 157 - iBuff, COLOR4);
       break;
     case 9:
-      iBuff = secondDataByte[3] >> 5;
+      iBuff = patchValue[3] >> 5;
       tft.drawPixel(locator, 157 - iBuff, COLOR4);
       break;
     case 10:
-      iBuff = secondDataByte[3] >> 5;
+      iBuff = patchValue[3] >> 5;
       tft.drawPixel(locator, 157 - iBuff, COLOR4);
       break;
     case 11:
-      iBuff = secondDataByte[3] >> 5;
+      iBuff = patchValue[3] >> 5;
       tft.drawPixel(locator, 157 - iBuff, COLOR4);
       break;
     case 12:
-      iBuff = secondDataByte[3] >> 5;
+      iBuff = patchValue[3] >> 5;
       tft.drawPixel(locator, 157 - iBuff, COLOR4);
       break;
     case 13:
-      iBuff = secondDataByte[3] >> 5;
+      iBuff = patchValue[3] >> 5;
       tft.drawPixel(locator, 157 - iBuff, COLOR4);
       break;
   }
   switch (commandIdentifier[4]) {
     case 1:
-      tft.drawPixel(locator, 157 - secondDataByte[4], COLOR5);
+      tft.drawPixel(locator, 157 - patchValue[4], COLOR5);
       break;
     case 2:
-      iBuff = secondDataByte[4] >> 7;
+      iBuff = patchValue[4] >> 7;
       tft.drawPixel(locator, 157 - iBuff, COLOR5);
       break;
     case 3:
-      iBuff = secondDataByte[4] >> 7;
+      iBuff = patchValue[4] >> 7;
       tft.drawPixel(locator, 157 - iBuff, COLOR5);
       break;
     case 4:
-      tft.drawPixel(locator, 157 - secondDataByte[4], COLOR5);
+      tft.drawPixel(locator, 157 - patchValue[4], COLOR5);
       break;
     case 5:
-      iBuff = secondDataByte[4] >> 7;
+      iBuff = patchValue[4] >> 7;
       tft.drawPixel(locator, 157 - iBuff, COLOR5);
       break;
     case 6:
-      iBuff = secondDataByte[4] >> 5;
+      iBuff = patchValue[4] >> 5;
       tft.drawPixel(locator, 157 - iBuff, COLOR5);
       break;
     case 7:
-      iBuff = secondDataByte[4] >> 5;
+      iBuff = patchValue[4] >> 5;
       tft.drawPixel(locator, 157 - iBuff, COLOR5);
       break;
     case 8:
-      iBuff = secondDataByte[4] >> 5;
+      iBuff = patchValue[4] >> 5;
       tft.drawPixel(locator, 157 - iBuff, COLOR5);
       break;
     case 9:
-      iBuff = secondDataByte[4] >> 5;
+      iBuff = patchValue[4] >> 5;
       tft.drawPixel(locator, 157 - iBuff, COLOR5);
       break;
     case 10:
-      iBuff = secondDataByte[4] >> 5;
+      iBuff = patchValue[4] >> 5;
       tft.drawPixel(locator, 157 - iBuff, COLOR5);
       break;
     case 11:
-      iBuff = secondDataByte[4] >> 5;
+      iBuff = patchValue[4] >> 5;
       tft.drawPixel(locator, 157 - iBuff, COLOR5);
       break;
     case 12:
-      iBuff = secondDataByte[4] >> 5;
+      iBuff = patchValue[4] >> 5;
       tft.drawPixel(locator, 157 - iBuff, COLOR5);
       break;
     case 13:
-      iBuff = secondDataByte[4] >> 5;
+      iBuff = patchValue[4] >> 5;
       tft.drawPixel(locator, 157 - iBuff, COLOR5);
       break;
   }
@@ -9602,261 +9622,261 @@ void drawLiveValuesB (){
   
   switch (commandIdentifier[5]) {
     case 1:
-      tft.drawPixel(locator, 315 - secondDataByte[5], COLOR6);
+      tft.drawPixel(locator, 315 - patchValue[5], COLOR6);
       break;
     case 2:
-      iBuff = secondDataByte[5] >> 7;
+      iBuff = patchValue[5] >> 7;
       tft.drawPixel(locator, 315 - iBuff, COLOR6);
       break;
     case 3:
-      iBuff = secondDataByte[5] >> 7;
+      iBuff = patchValue[5] >> 7;
       tft.drawPixel(locator, 315 - iBuff, COLOR6);
       break;
     case 4:
-      tft.drawPixel(locator, 315 - secondDataByte[5], COLOR6);
+      tft.drawPixel(locator, 315 - patchValue[5], COLOR6);
       break;
     case 5:
-      iBuff = secondDataByte[5] >> 7;
+      iBuff = patchValue[5] >> 7;
       tft.drawPixel(locator, 315 - iBuff, COLOR6);
       break;
     case 6:
-      iBuff = secondDataByte[5] >> 5;
+      iBuff = patchValue[5] >> 5;
       tft.drawPixel(locator, 315 - iBuff, COLOR6);
       break;
     case 7:
-      iBuff = secondDataByte[5] >> 5;
+      iBuff = patchValue[5] >> 5;
       tft.drawPixel(locator, 315 - iBuff, COLOR6);
       break;
     case 8:
-      iBuff = secondDataByte[5] >> 5;
+      iBuff = patchValue[5] >> 5;
       tft.drawPixel(locator, 315 - iBuff, COLOR6);
       break;
     case 9:
-      iBuff = secondDataByte[5] >> 5;
+      iBuff = patchValue[5] >> 5;
       tft.drawPixel(locator, 315 - iBuff, COLOR6);
       break;
     case 10:
-      iBuff = secondDataByte[5] >> 5;
+      iBuff = patchValue[5] >> 5;
       tft.drawPixel(locator, 315 - iBuff, COLOR6);
       break;
     case 11:
-      iBuff = secondDataByte[5] >> 5;
+      iBuff = patchValue[5] >> 5;
       tft.drawPixel(locator, 315 - iBuff, COLOR6);
       break;
     case 12:
-      iBuff = secondDataByte[5] >> 5;
+      iBuff = patchValue[5] >> 5;
       tft.drawPixel(locator, 315 - iBuff, COLOR6);
       break;
     case 13:
-      iBuff = secondDataByte[5] >> 5;
+      iBuff = patchValue[5] >> 5;
       tft.drawPixel(locator, 315 - iBuff, COLOR6);
       break;
   }
   switch (commandIdentifier[6]) {
     case 1:
-      tft.drawPixel(locator, 315 - secondDataByte[6], COLOR7);
+      tft.drawPixel(locator, 315 - patchValue[6], COLOR7);
       break;
     case 2:
-      iBuff = secondDataByte[6] >> 7;
+      iBuff = patchValue[6] >> 7;
       tft.drawPixel(locator, 315 - iBuff, COLOR7);
       break;
     case 3:
-      iBuff = secondDataByte[6] >> 7;
+      iBuff = patchValue[6] >> 7;
       tft.drawPixel(locator, 315 - iBuff, COLOR7);
       break;
     case 4:
-      tft.drawPixel(locator, 315 - secondDataByte[6], COLOR7);
+      tft.drawPixel(locator, 315 - patchValue[6], COLOR7);
       break;
     case 5:
-      iBuff = secondDataByte[6] >> 7;
+      iBuff = patchValue[6] >> 7;
       tft.drawPixel(locator, 315 - iBuff, COLOR7);
       break;
     case 6:
-      iBuff = secondDataByte[6] >> 5;
+      iBuff = patchValue[6] >> 5;
       tft.drawPixel(locator, 315 - iBuff, COLOR7);
       break;
     case 7:
-      iBuff = secondDataByte[6] >> 5;
+      iBuff = patchValue[6] >> 5;
       tft.drawPixel(locator, 315 - iBuff, COLOR7);
       break;
     case 8:
-      iBuff = secondDataByte[6] >> 5;
+      iBuff = patchValue[6] >> 5;
       tft.drawPixel(locator, 315 - iBuff, COLOR7);
       break;
     case 9:
-      iBuff = secondDataByte[6] >> 5;
+      iBuff = patchValue[6] >> 5;
       tft.drawPixel(locator, 315 - iBuff, COLOR7);
       break;
     case 10:
-      iBuff = secondDataByte[6] >> 5;
+      iBuff = patchValue[6] >> 5;
       tft.drawPixel(locator, 315 - iBuff, COLOR7);
       break;
     case 11:
-      iBuff = secondDataByte[6] >> 5;
+      iBuff = patchValue[6] >> 5;
       tft.drawPixel(locator, 315 - iBuff, COLOR7);
       break;
     case 12:
-      iBuff = secondDataByte[6] >> 5;
+      iBuff = patchValue[6] >> 5;
       tft.drawPixel(locator, 315 - iBuff, COLOR7);
       break;
     case 13:
-      iBuff = secondDataByte[6] >> 5;
+      iBuff = patchValue[6] >> 5;
       tft.drawPixel(locator, 315 - iBuff, COLOR7);
       break;
   }
   switch (commandIdentifier[7]) {
     case 1:
-      tft.drawPixel(locator, 315 - secondDataByte[7], COLOR8);
+      tft.drawPixel(locator, 315 - patchValue[7], COLOR8);
       break;
     case 2:
-      iBuff = secondDataByte[7] >> 7;
+      iBuff = patchValue[7] >> 7;
       tft.drawPixel(locator, 315 - iBuff, COLOR8);
       break;
     case 3:
-      iBuff = secondDataByte[7] >> 7;
+      iBuff = patchValue[7] >> 7;
       tft.drawPixel(locator, 315 - iBuff, COLOR8);
       break;
     case 4:
-      tft.drawPixel(locator, 315 - secondDataByte[7], COLOR8);
+      tft.drawPixel(locator, 315 - patchValue[7], COLOR8);
       break;
     case 5:
-      iBuff = secondDataByte[7] >> 7;
+      iBuff = patchValue[7] >> 7;
       tft.drawPixel(locator, 315 - iBuff, COLOR8);
       break;
     case 6:
-      iBuff = secondDataByte[7] >> 5;
+      iBuff = patchValue[7] >> 5;
       tft.drawPixel(locator, 315 - iBuff, COLOR8);
       break;
     case 7:
-      iBuff = secondDataByte[7] >> 5;
+      iBuff = patchValue[7] >> 5;
       tft.drawPixel(locator, 315 - iBuff, COLOR8);
       break;
     case 8:
-      iBuff = secondDataByte[7] >> 5;
+      iBuff = patchValue[7] >> 5;
       tft.drawPixel(locator, 315 - iBuff, COLOR8);
       break;
     case 9:
-      iBuff = secondDataByte[7] >> 5;
+      iBuff = patchValue[7] >> 5;
       tft.drawPixel(locator, 315 - iBuff, COLOR8);
       break;
     case 10:
-      iBuff = secondDataByte[7] >> 5;
+      iBuff = patchValue[7] >> 5;
       tft.drawPixel(locator, 315 - iBuff, COLOR8);
       break;
     case 11:
-      iBuff = secondDataByte[7] >> 5;
+      iBuff = patchValue[7] >> 5;
       tft.drawPixel(locator, 315 - iBuff, COLOR8);
       break;
     case 12:
-      iBuff = secondDataByte[7] >> 5;
+      iBuff = patchValue[7] >> 5;
       tft.drawPixel(locator, 315 - iBuff, COLOR8);
       break;
     case 13:
-      iBuff = secondDataByte[7] >> 5;
+      iBuff = patchValue[7] >> 5;
       tft.drawPixel(locator, 315 - iBuff, COLOR8);
       break;
   }
   switch (commandIdentifier[8]) {
     case 1:
-      tft.drawPixel(locator, 315 - secondDataByte[8], COLOR9);
+      tft.drawPixel(locator, 315 - patchValue[8], COLOR9);
       break;
     case 2:
-      iBuff = secondDataByte[8] >> 7;
+      iBuff = patchValue[8] >> 7;
       tft.drawPixel(locator, 315 - iBuff, COLOR9);
       break;
     case 3:
-      iBuff = secondDataByte[8] >> 7;
+      iBuff = patchValue[8] >> 7;
       tft.drawPixel(locator, 315 - iBuff, COLOR9);
       break;
     case 4:
-      tft.drawPixel(locator, 315 - secondDataByte[8], COLOR9);
+      tft.drawPixel(locator, 315 - patchValue[8], COLOR9);
       break;
     case 5:
-      iBuff = secondDataByte[8] >> 7;
+      iBuff = patchValue[8] >> 7;
       tft.drawPixel(locator, 315 - iBuff, COLOR9);
       break;
     case 6:
-      iBuff = secondDataByte[8] >> 5;
+      iBuff = patchValue[8] >> 5;
       tft.drawPixel(locator, 315 - iBuff, COLOR9);
       break;
     case 7:
-      iBuff = secondDataByte[8] >> 5;
+      iBuff = patchValue[8] >> 5;
       tft.drawPixel(locator, 315 - iBuff, COLOR9);
       break;
     case 8:
-      iBuff = secondDataByte[8] >> 5;
+      iBuff = patchValue[8] >> 5;
       tft.drawPixel(locator, 315 - iBuff, COLOR9);
       break;
     case 9:
-      iBuff = secondDataByte[8] >> 5;
+      iBuff = patchValue[8] >> 5;
       tft.drawPixel(locator, 315 - iBuff, COLOR9);
       break;
     case 10:
-      iBuff = secondDataByte[8] >> 5;
+      iBuff = patchValue[8] >> 5;
       tft.drawPixel(locator, 315 - iBuff, COLOR9);
       break;
     case 11:
-      iBuff = secondDataByte[8] >> 5;
+      iBuff = patchValue[8] >> 5;
       tft.drawPixel(locator, 315 - iBuff, COLOR9);
       break;
     case 12:
-      iBuff = secondDataByte[8] >> 5;
+      iBuff = patchValue[8] >> 5;
       tft.drawPixel(locator, 315 - iBuff, COLOR9);
       break;
     case 13:
-      iBuff = secondDataByte[8] >> 5;
+      iBuff = patchValue[8] >> 5;
       tft.drawPixel(locator, 315 - iBuff, COLOR9);
       break;
   }
   switch (commandIdentifier[9]) {
     case 1:
-      tft.drawPixel(locator, 315 - secondDataByte[9], COLOR0);
+      tft.drawPixel(locator, 315 - patchValue[9], COLOR0);
       break;
     case 2:
-      iBuff = secondDataByte[9] >> 7;
+      iBuff = patchValue[9] >> 7;
       tft.drawPixel(locator, 315 - iBuff, COLOR0);
       break;
     case 3:
-      iBuff = secondDataByte[9] >> 7;
+      iBuff = patchValue[9] >> 7;
       tft.drawPixel(locator, 315 - iBuff, COLOR0);
       break;
     case 4:
-      tft.drawPixel(locator, 315 - secondDataByte[9], COLOR0);
+      tft.drawPixel(locator, 315 - patchValue[9], COLOR0);
       break;
     case 5:
-      iBuff = secondDataByte[9] >> 7;
+      iBuff = patchValue[9] >> 7;
       tft.drawPixel(locator, 315 - iBuff, COLOR0);
       break;
     case 6:
-      iBuff = secondDataByte[9] >> 5;
+      iBuff = patchValue[9] >> 5;
       tft.drawPixel(locator, 315 - iBuff, COLOR0);
       break;
     case 7:
-      iBuff = secondDataByte[9] >> 5;
+      iBuff = patchValue[9] >> 5;
       tft.drawPixel(locator, 315 - iBuff, COLOR0);
       break;
     case 8:
-      iBuff = secondDataByte[9] >> 5;
+      iBuff = patchValue[9] >> 5;
       tft.drawPixel(locator, 315 - iBuff, COLOR0);
       break;
     case 9:
-      iBuff = secondDataByte[9] >> 5;
+      iBuff = patchValue[9] >> 5;
       tft.drawPixel(locator, 315 - iBuff, COLOR0);
       break;
     case 10:
-      iBuff = secondDataByte[9] >> 5;
+      iBuff = patchValue[9] >> 5;
       tft.drawPixel(locator, 315 - iBuff, COLOR0);
       break;
     case 11:
-      iBuff = secondDataByte[9] >> 5;
+      iBuff = patchValue[9] >> 5;
       tft.drawPixel(locator, 315 - iBuff, COLOR0);
       break;
     case 12:
-      iBuff = secondDataByte[9] >> 5;
+      iBuff = patchValue[9] >> 5;
       tft.drawPixel(locator, 315 - iBuff, COLOR0);
       break;
     case 13:
-      iBuff = secondDataByte[9] >> 5;
+      iBuff = patchValue[9] >> 5;
       tft.drawPixel(locator, 315 - iBuff, COLOR0);
       break;
   }
@@ -9869,261 +9889,261 @@ void drawLiveValuesC (){
   
   switch (commandIdentifier[0]) {
     case 1:
-      tft.drawPixel(locator, 157 - secondDataByte[0], COLOR1);
+      tft.drawPixel(locator, 157 - patchValue[0], COLOR1);
       break;
     case 2:
-      iBuff = secondDataByte[0] >> 7;
+      iBuff = patchValue[0] >> 7;
       tft.drawPixel(locator, 157 - iBuff, COLOR1);
       break;
     case 3:
-      iBuff = secondDataByte[0] >> 7;
+      iBuff = patchValue[0] >> 7;
       tft.drawPixel(locator, 157 - iBuff, COLOR1);
       break;
     case 4:
-      tft.drawPixel(locator, 157 - secondDataByte[0], COLOR1);
+      tft.drawPixel(locator, 157 - patchValue[0], COLOR1);
       break;
     case 5:
-      iBuff = secondDataByte[0] >> 7;
+      iBuff = patchValue[0] >> 7;
       tft.drawPixel(locator, 157 - iBuff, COLOR1);
       break;
     case 6:
-      iBuff = secondDataByte[0] >> 5;
+      iBuff = patchValue[0] >> 5;
       tft.drawPixel(locator, 157 - iBuff, COLOR1);
       break;
     case 7:
-      iBuff = secondDataByte[0] >> 5;
+      iBuff = patchValue[0] >> 5;
       tft.drawPixel(locator, 157 - iBuff, COLOR1);
       break;
     case 8:
-      iBuff = secondDataByte[0] >> 5;
+      iBuff = patchValue[0] >> 5;
       tft.drawPixel(locator, 157 - iBuff, COLOR1);
       break;
     case 9:
-      iBuff = secondDataByte[0] >> 5;
+      iBuff = patchValue[0] >> 5;
       tft.drawPixel(locator, 157 - iBuff, COLOR1);
       break;
     case 10:
-      iBuff = secondDataByte[0] >> 5;
+      iBuff = patchValue[0] >> 5;
       tft.drawPixel(locator, 157 - iBuff, COLOR1);
       break;
     case 11:
-      iBuff = secondDataByte[0] >> 5;
+      iBuff = patchValue[0] >> 5;
       tft.drawPixel(locator, 157 - iBuff, COLOR1);
       break;
     case 12:
-      iBuff = secondDataByte[0] >> 5;
+      iBuff = patchValue[0] >> 5;
       tft.drawPixel(locator, 157 - iBuff, COLOR1);
       break;
     case 13:
-      iBuff = secondDataByte[0] >> 5;
+      iBuff = patchValue[0] >> 5;
       tft.drawPixel(locator, 157 - iBuff, COLOR1);
       break;
   }
   switch (commandIdentifier[1]) {
     case 1:
-      tft.drawPixel(locator, 157 - secondDataByte[1], COLOR2);
+      tft.drawPixel(locator, 157 - patchValue[1], COLOR2);
       break;
     case 2:
-      iBuff = secondDataByte[1] >> 7;
+      iBuff = patchValue[1] >> 7;
       tft.drawPixel(locator, 157 - iBuff, COLOR2);
       break;
     case 3:
-      iBuff = secondDataByte[1] >> 7;
+      iBuff = patchValue[1] >> 7;
       tft.drawPixel(locator, 157 - iBuff, COLOR2);
       break;
     case 4:
-      tft.drawPixel(locator, 157 - secondDataByte[1], COLOR2);
+      tft.drawPixel(locator, 157 - patchValue[1], COLOR2);
       break;
     case 5:
-      iBuff = secondDataByte[1] >> 7;
+      iBuff = patchValue[1] >> 7;
       tft.drawPixel(locator, 157 - iBuff, COLOR2);
       break;
     case 6:
-      iBuff = secondDataByte[1] >> 5;
+      iBuff = patchValue[1] >> 5;
       tft.drawPixel(locator, 157 - iBuff, COLOR2);
       break;
     case 7:
-      iBuff = secondDataByte[1] >> 5;
+      iBuff = patchValue[1] >> 5;
       tft.drawPixel(locator, 157 - iBuff, COLOR2);
       break;
     case 8:
-      iBuff = secondDataByte[1] >> 5;
+      iBuff = patchValue[1] >> 5;
       tft.drawPixel(locator, 157 - iBuff, COLOR2);
       break;
     case 9:
-      iBuff = secondDataByte[1] >> 5;
+      iBuff = patchValue[1] >> 5;
       tft.drawPixel(locator, 157 - iBuff, COLOR2);
       break;
     case 10:
-      iBuff = secondDataByte[1] >> 5;
+      iBuff = patchValue[1] >> 5;
       tft.drawPixel(locator, 157 - iBuff, COLOR2);
       break;
     case 11:
-      iBuff = secondDataByte[1] >> 5;
+      iBuff = patchValue[1] >> 5;
       tft.drawPixel(locator, 157 - iBuff, COLOR2);
       break;
     case 12:
-      iBuff = secondDataByte[1] >> 5;
+      iBuff = patchValue[1] >> 5;
       tft.drawPixel(locator, 157 - iBuff, COLOR2);
       break;
     case 13:
-      iBuff = secondDataByte[1] >> 5;
+      iBuff = patchValue[1] >> 5;
       tft.drawPixel(locator, 157 - iBuff, COLOR2);
       break;
   }
   switch (commandIdentifier[2]) {
     case 1:
-      tft.drawPixel(locator, 157 - secondDataByte[2], COLOR3);
+      tft.drawPixel(locator, 157 - patchValue[2], COLOR3);
       break;
     case 2:
-      iBuff = secondDataByte[2] >> 7;
+      iBuff = patchValue[2] >> 7;
       tft.drawPixel(locator, 157 - iBuff, COLOR3);
       break;
     case 3:
-      iBuff = secondDataByte[2] >> 7;
+      iBuff = patchValue[2] >> 7;
       tft.drawPixel(locator, 157 - iBuff, COLOR3);
       break;
     case 4:
-      tft.drawPixel(locator, 157 - secondDataByte[2], COLOR3);
+      tft.drawPixel(locator, 157 - patchValue[2], COLOR3);
       break;
     case 5:
-      iBuff = secondDataByte[2] >> 7;
+      iBuff = patchValue[2] >> 7;
       tft.drawPixel(locator, 157 - iBuff, COLOR3);
       break;
     case 6:
-      iBuff = secondDataByte[2] >> 5;
+      iBuff = patchValue[2] >> 5;
       tft.drawPixel(locator, 157 - iBuff, COLOR3);
       break;
     case 7:
-      iBuff = secondDataByte[2] >> 5;
+      iBuff = patchValue[2] >> 5;
       tft.drawPixel(locator, 157 - iBuff, COLOR3);
       break;
     case 8:
-      iBuff = secondDataByte[2] >> 5;
+      iBuff = patchValue[2] >> 5;
       tft.drawPixel(locator, 157 - iBuff, COLOR3);
       break;
     case 9:
-      iBuff = secondDataByte[2] >> 5;
+      iBuff = patchValue[2] >> 5;
       tft.drawPixel(locator, 157 - iBuff, COLOR3);
       break;
     case 10:
-      iBuff = secondDataByte[2] >> 5;
+      iBuff = patchValue[2] >> 5;
       tft.drawPixel(locator, 157 - iBuff, COLOR3);
       break;
     case 11:
-      iBuff = secondDataByte[2] >> 5;
+      iBuff = patchValue[2] >> 5;
       tft.drawPixel(locator, 157 - iBuff, COLOR3);
       break;
     case 12:
-      iBuff = secondDataByte[2] >> 5;
+      iBuff = patchValue[2] >> 5;
       tft.drawPixel(locator, 157 - iBuff, COLOR3);
       break;
     case 13:
-      iBuff = secondDataByte[2] >> 5;
+      iBuff = patchValue[2] >> 5;
       tft.drawPixel(locator, 157 - iBuff, COLOR3);
       break;
   }
   switch (commandIdentifier[3]) {
     case 1:
-      tft.drawPixel(locator, 157 - secondDataByte[3], COLOR4);
+      tft.drawPixel(locator, 157 - patchValue[3], COLOR4);
       break;
     case 2:
-      iBuff = secondDataByte[3] >> 7;
+      iBuff = patchValue[3] >> 7;
       tft.drawPixel(locator, 157 - iBuff, COLOR4);
       break;
     case 3:
-      iBuff = secondDataByte[3] >> 7;
+      iBuff = patchValue[3] >> 7;
       tft.drawPixel(locator, 157 - iBuff, COLOR4);
       break;
     case 4:
-      tft.drawPixel(locator, 157 - secondDataByte[3], COLOR4);
+      tft.drawPixel(locator, 157 - patchValue[3], COLOR4);
       break;
     case 5:
-      iBuff = secondDataByte[3] >> 7;
+      iBuff = patchValue[3] >> 7;
       tft.drawPixel(locator, 157 - iBuff, COLOR4);
       break;
     case 6:
-      iBuff = secondDataByte[3] >> 5;
+      iBuff = patchValue[3] >> 5;
       tft.drawPixel(locator, 157 - iBuff, COLOR4);
       break;
     case 7:
-      iBuff = secondDataByte[3] >> 5;
+      iBuff = patchValue[3] >> 5;
       tft.drawPixel(locator, 157 - iBuff, COLOR4);
       break;
     case 8:
-      iBuff = secondDataByte[3] >> 5;
+      iBuff = patchValue[3] >> 5;
       tft.drawPixel(locator, 157 - iBuff, COLOR4);
       break;
     case 9:
-      iBuff = secondDataByte[3] >> 5;
+      iBuff = patchValue[3] >> 5;
       tft.drawPixel(locator, 157 - iBuff, COLOR4);
       break;
     case 10:
-      iBuff = secondDataByte[3] >> 5;
+      iBuff = patchValue[3] >> 5;
       tft.drawPixel(locator, 157 - iBuff, COLOR4);
       break;
     case 11:
-      iBuff = secondDataByte[3] >> 5;
+      iBuff = patchValue[3] >> 5;
       tft.drawPixel(locator, 157 - iBuff, COLOR4);
       break;
     case 12:
-      iBuff = secondDataByte[3] >> 5;
+      iBuff = patchValue[3] >> 5;
       tft.drawPixel(locator, 157 - iBuff, COLOR4);
       break;
     case 13:
-      iBuff = secondDataByte[3] >> 5;
+      iBuff = patchValue[3] >> 5;
       tft.drawPixel(locator, 157 - iBuff, COLOR4);
       break;
   }
   switch (commandIdentifier[4]) {
     case 1:
-      tft.drawPixel(locator, 157 - secondDataByte[4], COLOR5);
+      tft.drawPixel(locator, 157 - patchValue[4], COLOR5);
       break;
     case 2:
-      iBuff = secondDataByte[4] >> 7;
+      iBuff = patchValue[4] >> 7;
       tft.drawPixel(locator, 157 - iBuff, COLOR5);
       break;
     case 3:
-      iBuff = secondDataByte[4] >> 7;
+      iBuff = patchValue[4] >> 7;
       tft.drawPixel(locator, 157 - iBuff, COLOR5);
       break;
     case 4:
-      tft.drawPixel(locator, 157 - secondDataByte[4], COLOR5);
+      tft.drawPixel(locator, 157 - patchValue[4], COLOR5);
       break;
     case 5:
-      iBuff = secondDataByte[4] >> 7;
+      iBuff = patchValue[4] >> 7;
       tft.drawPixel(locator, 157 - iBuff, COLOR5);
       break;
     case 6:
-      iBuff = secondDataByte[4] >> 5;
+      iBuff = patchValue[4] >> 5;
       tft.drawPixel(locator, 157 - iBuff, COLOR5);
       break;
     case 7:
-      iBuff = secondDataByte[4] >> 5;
+      iBuff = patchValue[4] >> 5;
       tft.drawPixel(locator, 157 - iBuff, COLOR5);
       break;
     case 8:
-      iBuff = secondDataByte[4] >> 5;
+      iBuff = patchValue[4] >> 5;
       tft.drawPixel(locator, 157 - iBuff, COLOR5);
       break;
     case 9:
-      iBuff = secondDataByte[4] >> 5;
+      iBuff = patchValue[4] >> 5;
       tft.drawPixel(locator, 157 - iBuff, COLOR5);
       break;
     case 10:
-      iBuff = secondDataByte[4] >> 5;
+      iBuff = patchValue[4] >> 5;
       tft.drawPixel(locator, 157 - iBuff, COLOR5);
       break;
     case 11:
-      iBuff = secondDataByte[4] >> 5;
+      iBuff = patchValue[4] >> 5;
       tft.drawPixel(locator, 157 - iBuff, COLOR5);
       break;
     case 12:
-      iBuff = secondDataByte[4] >> 5;
+      iBuff = patchValue[4] >> 5;
       tft.drawPixel(locator, 157 - iBuff, COLOR5);
       break;
     case 13:
-      iBuff = secondDataByte[4] >> 5;
+      iBuff = patchValue[4] >> 5;
       tft.drawPixel(locator, 157 - iBuff, COLOR5);
       break;
   }
@@ -10132,261 +10152,261 @@ void drawLiveValuesC (){
   
   switch (commandIdentifier[5]) {
     case 1:
-      tft.drawPixel(locator2, 157 - secondDataByte[5], COLOR6);
+      tft.drawPixel(locator2, 157 - patchValue[5], COLOR6);
       break;
     case 2:
-      iBuff = secondDataByte[5] >> 7;
+      iBuff = patchValue[5] >> 7;
       tft.drawPixel(locator2, 157 - iBuff, COLOR6);
       break;
     case 3:
-      iBuff = secondDataByte[5] >> 7;
+      iBuff = patchValue[5] >> 7;
       tft.drawPixel(locator2, 157 - iBuff, COLOR6);
       break;
     case 4:
-      tft.drawPixel(locator2, 157 - secondDataByte[5], COLOR6);
+      tft.drawPixel(locator2, 157 - patchValue[5], COLOR6);
       break;
     case 5:
-      iBuff = secondDataByte[5] >> 7;
+      iBuff = patchValue[5] >> 7;
       tft.drawPixel(locator2, 157 - iBuff, COLOR6);
       break;
     case 6:
-      iBuff = secondDataByte[5] >> 5;
+      iBuff = patchValue[5] >> 5;
       tft.drawPixel(locator2, 157 - iBuff, COLOR6);
       break;
     case 7:
-      iBuff = secondDataByte[5] >> 5;
+      iBuff = patchValue[5] >> 5;
       tft.drawPixel(locator2, 157 - iBuff, COLOR6);
       break;
     case 8:
-      iBuff = secondDataByte[5] >> 5;
+      iBuff = patchValue[5] >> 5;
       tft.drawPixel(locator2, 157 - iBuff, COLOR6);
       break;
     case 9:
-      iBuff = secondDataByte[5] >> 5;
+      iBuff = patchValue[5] >> 5;
       tft.drawPixel(locator2, 157 - iBuff, COLOR6);
       break;
     case 10:
-      iBuff = secondDataByte[5] >> 5;
+      iBuff = patchValue[5] >> 5;
       tft.drawPixel(locator2, 157 - iBuff, COLOR6);
       break;
     case 11:
-      iBuff = secondDataByte[5] >> 5;
+      iBuff = patchValue[5] >> 5;
       tft.drawPixel(locator2, 157 - iBuff, COLOR6);
       break;
     case 12:
-      iBuff = secondDataByte[5] >> 5;
+      iBuff = patchValue[5] >> 5;
       tft.drawPixel(locator2, 157 - iBuff, COLOR6);
       break;
     case 13:
-      iBuff = secondDataByte[5] >> 5;
+      iBuff = patchValue[5] >> 5;
       tft.drawPixel(locator2, 157 - iBuff, COLOR6);
       break;
   }
   switch (commandIdentifier[6]) {
     case 1:
-      tft.drawPixel(locator2, 157 - secondDataByte[6], COLOR7);
+      tft.drawPixel(locator2, 157 - patchValue[6], COLOR7);
       break;
     case 2:
-      iBuff = secondDataByte[6] >> 7;
+      iBuff = patchValue[6] >> 7;
       tft.drawPixel(locator2, 157 - iBuff, COLOR7);
       break;
     case 3:
-      iBuff = secondDataByte[6] >> 7;
+      iBuff = patchValue[6] >> 7;
       tft.drawPixel(locator2, 157 - iBuff, COLOR7);
       break;
     case 4:
-      tft.drawPixel(locator2, 157 - secondDataByte[6], COLOR7);
+      tft.drawPixel(locator2, 157 - patchValue[6], COLOR7);
       break;
     case 5:
-      iBuff = secondDataByte[6] >> 7;
+      iBuff = patchValue[6] >> 7;
       tft.drawPixel(locator2, 157 - iBuff, COLOR7);
       break;
     case 6:
-      iBuff = secondDataByte[6] >> 5;
+      iBuff = patchValue[6] >> 5;
       tft.drawPixel(locator2, 157 - iBuff, COLOR7);
       break;
     case 7:
-      iBuff = secondDataByte[6] >> 5;
+      iBuff = patchValue[6] >> 5;
       tft.drawPixel(locator2, 157 - iBuff, COLOR7);
       break;
     case 8:
-      iBuff = secondDataByte[6] >> 5;
+      iBuff = patchValue[6] >> 5;
       tft.drawPixel(locator2, 157 - iBuff, COLOR7);
       break;
     case 9:
-      iBuff = secondDataByte[6] >> 5;
+      iBuff = patchValue[6] >> 5;
       tft.drawPixel(locator2, 157 - iBuff, COLOR7);
       break;
     case 10:
-      iBuff = secondDataByte[6] >> 5;
+      iBuff = patchValue[6] >> 5;
       tft.drawPixel(locator2, 157 - iBuff, COLOR7);
       break;
     case 11:
-      iBuff = secondDataByte[6] >> 5;
+      iBuff = patchValue[6] >> 5;
       tft.drawPixel(locator2, 157 - iBuff, COLOR7);
       break;
     case 12:
-      iBuff = secondDataByte[6] >> 5;
+      iBuff = patchValue[6] >> 5;
       tft.drawPixel(locator2, 157 - iBuff, COLOR7);
       break;
     case 13:
-      iBuff = secondDataByte[6] >> 5;
+      iBuff = patchValue[6] >> 5;
       tft.drawPixel(locator2, 157 - iBuff, COLOR7);
       break;
   }
   switch (commandIdentifier[7]) {
     case 1:
-      tft.drawPixel(locator2, 157 - secondDataByte[7], COLOR8);
+      tft.drawPixel(locator2, 157 - patchValue[7], COLOR8);
       break;
     case 2:
-      iBuff = secondDataByte[7] >> 7;
+      iBuff = patchValue[7] >> 7;
       tft.drawPixel(locator2, 157 - iBuff, COLOR8);
       break;
     case 3:
-      iBuff = secondDataByte[7] >> 7;
+      iBuff = patchValue[7] >> 7;
       tft.drawPixel(locator2, 157 - iBuff, COLOR8);
       break;
     case 4:
-      tft.drawPixel(locator2, 157 - secondDataByte[7], COLOR8);
+      tft.drawPixel(locator2, 157 - patchValue[7], COLOR8);
       break;
     case 5:
-      iBuff = secondDataByte[7] >> 7;
+      iBuff = patchValue[7] >> 7;
       tft.drawPixel(locator2, 157 - iBuff, COLOR8);
       break;
     case 6:
-      iBuff = secondDataByte[7] >> 5;
+      iBuff = patchValue[7] >> 5;
       tft.drawPixel(locator2, 157 - iBuff, COLOR8);
       break;
     case 7:
-      iBuff = secondDataByte[7] >> 5;
+      iBuff = patchValue[7] >> 5;
       tft.drawPixel(locator2, 157 - iBuff, COLOR8);
       break;
     case 8:
-      iBuff = secondDataByte[7] >> 5;
+      iBuff = patchValue[7] >> 5;
       tft.drawPixel(locator2, 157 - iBuff, COLOR8);
       break;
     case 9:
-      iBuff = secondDataByte[7] >> 5;
+      iBuff = patchValue[7] >> 5;
       tft.drawPixel(locator2, 157 - iBuff, COLOR8);
       break;
     case 10:
-      iBuff = secondDataByte[7] >> 5;
+      iBuff = patchValue[7] >> 5;
       tft.drawPixel(locator2, 157 - iBuff, COLOR8);
       break;
     case 11:
-      iBuff = secondDataByte[7] >> 5;
+      iBuff = patchValue[7] >> 5;
       tft.drawPixel(locator2, 157 - iBuff, COLOR8);
       break;
     case 12:
-      iBuff = secondDataByte[7] >> 5;
+      iBuff = patchValue[7] >> 5;
       tft.drawPixel(locator2, 157 - iBuff, COLOR8);
       break;
     case 13:
-      iBuff = secondDataByte[7] >> 5;
+      iBuff = patchValue[7] >> 5;
       tft.drawPixel(locator2, 157 - iBuff, COLOR8);
       break;
   }
   switch (commandIdentifier[8]) {
     case 1:
-      tft.drawPixel(locator2, 157 - secondDataByte[8], COLOR9);
+      tft.drawPixel(locator2, 157 - patchValue[8], COLOR9);
       break;
     case 2:
-      iBuff = secondDataByte[8] >> 7;
+      iBuff = patchValue[8] >> 7;
       tft.drawPixel(locator2, 157 - iBuff, COLOR9);
       break;
     case 3:
-      iBuff = secondDataByte[8] >> 7;
+      iBuff = patchValue[8] >> 7;
       tft.drawPixel(locator2, 157 - iBuff, COLOR9);
       break;
     case 4:
-      tft.drawPixel(locator2, 157 - secondDataByte[8], COLOR9);
+      tft.drawPixel(locator2, 157 - patchValue[8], COLOR9);
       break;
     case 5:
-      iBuff = secondDataByte[8] >> 7;
+      iBuff = patchValue[8] >> 7;
       tft.drawPixel(locator2, 157 - iBuff, COLOR9);
       break;
     case 6:
-      iBuff = secondDataByte[8] >> 5;
+      iBuff = patchValue[8] >> 5;
       tft.drawPixel(locator2, 157 - iBuff, COLOR9);
       break;
     case 7:
-      iBuff = secondDataByte[8] >> 5;
+      iBuff = patchValue[8] >> 5;
       tft.drawPixel(locator2, 157 - iBuff, COLOR9);
       break;
     case 8:
-      iBuff = secondDataByte[8] >> 5;
+      iBuff = patchValue[8] >> 5;
       tft.drawPixel(locator2, 157 - iBuff, COLOR9);
       break;
     case 9:
-      iBuff = secondDataByte[8] >> 5;
+      iBuff = patchValue[8] >> 5;
       tft.drawPixel(locator2, 157 - iBuff, COLOR9);
       break;
     case 10:
-      iBuff = secondDataByte[8] >> 5;
+      iBuff = patchValue[8] >> 5;
       tft.drawPixel(locator2, 157 - iBuff, COLOR9);
       break;
     case 11:
-      iBuff = secondDataByte[8] >> 5;
+      iBuff = patchValue[8] >> 5;
       tft.drawPixel(locator2, 157 - iBuff, COLOR9);
       break;
     case 12:
-      iBuff = secondDataByte[8] >> 5;
+      iBuff = patchValue[8] >> 5;
       tft.drawPixel(locator2, 157 - iBuff, COLOR9);
       break;
     case 13:
-      iBuff = secondDataByte[8] >> 5;
+      iBuff = patchValue[8] >> 5;
       tft.drawPixel(locator2, 157 - iBuff, COLOR9);
       break;
   }
   switch (commandIdentifier[9]) {
     case 1:
-      tft.drawPixel(locator2, 157 - secondDataByte[9], COLOR0);
+      tft.drawPixel(locator2, 157 - patchValue[9], COLOR0);
       break;
     case 2:
-      iBuff = secondDataByte[9] >> 7;
+      iBuff = patchValue[9] >> 7;
       tft.drawPixel(locator2, 157 - iBuff, COLOR0);
       break;
     case 3:
-      iBuff = secondDataByte[9] >> 7;
+      iBuff = patchValue[9] >> 7;
       tft.drawPixel(locator2, 157 - iBuff, COLOR0);
       break;
     case 4:
-      tft.drawPixel(locator2, 157 - secondDataByte[9], COLOR0);
+      tft.drawPixel(locator2, 157 - patchValue[9], COLOR0);
       break;
     case 5:
-      iBuff = secondDataByte[9] >> 7;
+      iBuff = patchValue[9] >> 7;
       tft.drawPixel(locator2, 157 - iBuff, COLOR0);
       break;
     case 6:
-      iBuff = secondDataByte[9] >> 5;
+      iBuff = patchValue[9] >> 5;
       tft.drawPixel(locator2, 157 - iBuff, COLOR0);
       break;
     case 7:
-      iBuff = secondDataByte[9] >> 5;
+      iBuff = patchValue[9] >> 5;
       tft.drawPixel(locator2, 157 - iBuff, COLOR0);
       break;
     case 8:
-      iBuff = secondDataByte[9] >> 5;
+      iBuff = patchValue[9] >> 5;
       tft.drawPixel(locator2, 157 - iBuff, COLOR0);
       break;
     case 9:
-      iBuff = secondDataByte[9] >> 5;
+      iBuff = patchValue[9] >> 5;
       tft.drawPixel(locator2, 157 - iBuff, COLOR0);
       break;
     case 10:
-      iBuff = secondDataByte[9] >> 5;
+      iBuff = patchValue[9] >> 5;
       tft.drawPixel(locator2, 157 - iBuff, COLOR0);
       break;
     case 11:
-      iBuff = secondDataByte[9] >> 5;
+      iBuff = patchValue[9] >> 5;
       tft.drawPixel(locator2, 157 - iBuff, COLOR0);
       break;
     case 12:
-      iBuff = secondDataByte[9] >> 5;
+      iBuff = patchValue[9] >> 5;
       tft.drawPixel(locator2, 157 - iBuff, COLOR0);
       break;
     case 13:
-      iBuff = secondDataByte[9] >> 5;
+      iBuff = patchValue[9] >> 5;
       tft.drawPixel(locator2, 157 - iBuff, COLOR0);
       break;
   }
@@ -10714,130 +10734,130 @@ void buildLiveModeB(){
   tft.print(midiChan[0]); 
   if (commandIdentifier[0] == 1) {
     tft.print(" CC");
-    tft.print(firstDataByte[0]);
+    tft.print(ctrlrNrA[0]);
   }
   else if (commandIdentifier[0] > 1) {
     tft.print(" M");
-    tft.print(firstDataByte[0]);
+    tft.print(ctrlrNrA[0]);
     tft.print(" L");
-    tft.print(firstDataByteB[0]);
+    tft.print(ctrlrNrB[0]);
   }
   tft.setCursor(6, 98);
   tft.print("CH");
   tft.print(midiChan[1]);
   if (commandIdentifier[1] == 1) {
     tft.print(" CC");
-    tft.print(firstDataByte[1]);
+    tft.print(ctrlrNrA[1]);
   }
   else if (commandIdentifier[1] > 1) {
     tft.print(" M");
-    tft.print(firstDataByte[1]);
+    tft.print(ctrlrNrA[1]);
     tft.print(" L");
-    tft.print(firstDataByteB[1]);
+    tft.print(ctrlrNrB[1]);
   }
   tft.setCursor(6, 162);
   tft.print("CH");
   tft.print(midiChan[2]);
   if (commandIdentifier[2] == 1) {
     tft.print(" CC");
-    tft.print(firstDataByte[2]);
+    tft.print(ctrlrNrA[2]);
   }
   else if (commandIdentifier[2] > 1) {
     tft.print(" M");
-    tft.print(firstDataByte[2]);
+    tft.print(ctrlrNrA[2]);
     tft.print(" L");
-    tft.print(firstDataByteB[2]);
+    tft.print(ctrlrNrB[2]);
   }
   tft.setCursor(6, 226);
   tft.print("CH");
   tft.print(midiChan[3]);
   if (commandIdentifier[3] == 1) {
     tft.print(" CC");
-    tft.print(firstDataByte[3]);
+    tft.print(ctrlrNrA[3]);
   }
   else if (commandIdentifier[3] > 1) {
     tft.print(" M");
-    tft.print(firstDataByte[3]);
+    tft.print(ctrlrNrA[3]);
     tft.print(" L");
-    tft.print(firstDataByteB[3]);
+    tft.print(ctrlrNrB[3]);
   }
   tft.setCursor(6, 290);
   tft.print("CH");
   tft.print(midiChan[4]);
   if (commandIdentifier[4] == 1) {
     tft.print(" CC");
-    tft.print(firstDataByte[4]);
+    tft.print(ctrlrNrA[4]);
   }
   else if (commandIdentifier[4] > 1) {
     tft.print(" M");
-    tft.print(firstDataByte[4]);
+    tft.print(ctrlrNrA[4]);
     tft.print(" L");
-    tft.print(firstDataByteB[4]);
+    tft.print(ctrlrNrB[4]);
   }
   tft.setCursor(389, 34);
   tft.print("CH");
   tft.print(midiChan[5]);
   if (commandIdentifier[5] == 1) {
     tft.print(" CC");
-    tft.print(firstDataByte[5]);
+    tft.print(ctrlrNrA[5]);
   }
   else if (commandIdentifier[5] > 1) {
     tft.print(" M");
-    tft.print(firstDataByte[5]);
+    tft.print(ctrlrNrA[5]);
     tft.print(" L");
-    tft.print(firstDataByteB[5]);
+    tft.print(ctrlrNrB[5]);
   }
   tft.setCursor(389, 98);
   tft.print("CH");
   tft.print(midiChan[6]);
   if (commandIdentifier[6] == 1) {
     tft.print(" CC");
-    tft.print(firstDataByte[6]);
+    tft.print(ctrlrNrA[6]);
   }
   else if (commandIdentifier[6] > 1) {
     tft.print(" M");
-    tft.print(firstDataByte[6]);
+    tft.print(ctrlrNrA[6]);
     tft.print(" L");
-    tft.print(firstDataByteB[6]);
+    tft.print(ctrlrNrB[6]);
   }
   tft.setCursor(389, 162);
   tft.print("CH");
   tft.print(midiChan[7]);
   if (commandIdentifier[7] == 1) {
     tft.print(" CC");
-    tft.print(firstDataByte[7]);
+    tft.print(ctrlrNrA[7]);
   }
   else if (commandIdentifier[7] > 1) {
     tft.print(" M");
-    tft.print(firstDataByte[7]);
+    tft.print(ctrlrNrA[7]);
     tft.print(" L");
-    tft.print(firstDataByteB[7]);
+    tft.print(ctrlrNrB[7]);
   } 
   tft.setCursor(389, 226);
   tft.print("CH");
   tft.print(midiChan[8]);
   if (commandIdentifier[8] == 1) {
     tft.print(" CC");
-    tft.print(firstDataByte[8]);
+    tft.print(ctrlrNrA[8]);
   }
   else if (commandIdentifier[8] > 1) {
     tft.print(" M");
-    tft.print(firstDataByte[8]);
+    tft.print(ctrlrNrA[8]);
     tft.print(" L");
-    tft.print(firstDataByteB[8]);
+    tft.print(ctrlrNrB[8]);
   } 
   tft.setCursor(389, 290);
   tft.print("CH");
   tft.print(midiChan[9]);
   if (commandIdentifier[9] == 1) {
     tft.print(" CC");
-    tft.print(firstDataByte[9]);
+    tft.print(ctrlrNrA[9]);
   }
   else if (commandIdentifier[9] > 1) {
     tft.print(" M");
-    tft.print(firstDataByte[9]);
+    tft.print(ctrlrNrA[9]);
     tft.print(" L");
-    tft.print(firstDataByteB[9]);
+    tft.print(ctrlrNrB[9]);
   }
 }
 
@@ -11144,10 +11164,6 @@ void bmpDraw(char *filename, int x, int y) {
 
   if((x >= tft.width()) || (y >= tft.height())) return;
 
-  Serial.println();
-  Serial.print(F("Loading image '"));
-  Serial.print(filename);
-  Serial.println('\'');
   // Open requested file on SD card
   if ((bmpFile = SD.open(filename)) == NULL) {
     //Serial.println(F("File not found"));
@@ -11156,24 +11172,18 @@ void bmpDraw(char *filename, int x, int y) {
 
   // Parse BMP header
   if(read16(bmpFile) == 0x4D42) { // BMP signature
-    Serial.println(F("File size: ")); Serial.println(read32(bmpFile));
+    read32(bmpFile);
     (void)read32(bmpFile); // Read & ignore creator bytes
     bmpImageoffset = read32(bmpFile); // Start of image data
-    Serial.print(F("Image Offset: ")); Serial.println(bmpImageoffset, DEC);
     // Read DIB header
-    Serial.print(F("Header size: ")); Serial.println(read32(bmpFile));
+    read32(bmpFile);
     bmpWidth  = read32(bmpFile);
     bmpHeight = read32(bmpFile);
     if(read16(bmpFile) == 1) { // # planes -- must be '1'
       bmpDepth = read16(bmpFile); // bits per pixel
-      Serial.print(F("Bit Depth: ")); Serial.println(bmpDepth);
       if((bmpDepth == 24) && (read32(bmpFile) == 0)) { // 0 = uncompressed
 
         goodBmp = true; // Supported BMP format -- proceed!
-        Serial.print(F("Image size: "));
-        Serial.print(bmpWidth);
-        Serial.print('x');
-        Serial.println(bmpHeight);
 
         // BMP rows are padded (if needed) to 4-byte boundary
         rowSize = (bmpWidth * 3 + 3) & ~3;
@@ -11226,15 +11236,10 @@ void bmpDraw(char *filename, int x, int y) {
         if(lcdidx > 0) {
           tft.pushColors(lcdbuffer, lcdidx, first);
         } 
-        Serial.print(F("Loaded in "));
-        Serial.print(millis() - startTime);
-        Serial.println(" ms");
       } // end goodBmp
     }
   }
-
   bmpFile.close();
-  if(!goodBmp) Serial.println(F("BMP format not recognized."));
 }
 
 uint16_t read16(File f) {
@@ -11738,45 +11743,45 @@ void writeSDPreset() {
     myFile.print("H9;");
     myFile.println(midiChan[9]);
     myFile.print("I0;");
-    myFile.println(firstDataByte[0]);
+    myFile.println(ctrlrNrA[0]);
     myFile.print("I1;");
-    myFile.println(firstDataByte[1]);
+    myFile.println(ctrlrNrA[1]);
     myFile.print("I2;");
-    myFile.println(firstDataByte[2]);
+    myFile.println(ctrlrNrA[2]);
     myFile.print("I3;");
-    myFile.println(firstDataByte[3]);
+    myFile.println(ctrlrNrA[3]);
     myFile.print("I4;");
-    myFile.println(firstDataByte[4]);
+    myFile.println(ctrlrNrA[4]);
     myFile.print("I5;");
-    myFile.println(firstDataByte[5]);
+    myFile.println(ctrlrNrA[5]);
     myFile.print("I6;");
-    myFile.println(firstDataByte[6]);
+    myFile.println(ctrlrNrA[6]);
     myFile.print("I7;");
-    myFile.println(firstDataByte[7]);
+    myFile.println(ctrlrNrA[7]);
     myFile.print("I8;");
-    myFile.println(firstDataByte[8]);
+    myFile.println(ctrlrNrA[8]);
     myFile.print("I9;");
-    myFile.println(firstDataByte[9]);
+    myFile.println(ctrlrNrA[9]);
     myFile.print("J0;");
-    myFile.println(firstDataByteB[0]);
+    myFile.println(ctrlrNrB[0]);
     myFile.print("J1;");
-    myFile.println(firstDataByteB[1]);
+    myFile.println(ctrlrNrB[1]);
     myFile.print("J2;");
-    myFile.println(firstDataByteB[2]);
+    myFile.println(ctrlrNrB[2]);
     myFile.print("J3;");
-    myFile.println(firstDataByteB[3]);
+    myFile.println(ctrlrNrB[3]);
     myFile.print("J4;");
-    myFile.println(firstDataByteB[4]);
+    myFile.println(ctrlrNrB[4]);
     myFile.print("J5;");
-    myFile.println(firstDataByteB[5]);
+    myFile.println(ctrlrNrB[5]);
     myFile.print("J6;");
-    myFile.println(firstDataByteB[6]);
+    myFile.println(ctrlrNrB[6]);
     myFile.print("J7;");
-    myFile.println(firstDataByteB[7]);
+    myFile.println(ctrlrNrB[7]);
     myFile.print("J8;");
-    myFile.println(firstDataByteB[8]);
+    myFile.println(ctrlrNrB[8]);
     myFile.print("J9;");
-    myFile.println(firstDataByteB[9]);
+    myFile.println(ctrlrNrB[9]);
     myFile.print("K0;");
     myFile.println(dmpMinInValue[0]);
     myFile.print("K1;");
@@ -12402,64 +12407,64 @@ void applyPreset(String settingName, String settingValue) {
     midiChan[9]=settingValue.toInt();
   }
   else if(settingName == "I0") {
-    firstDataByte[0]=settingValue.toInt();
+    ctrlrNrA[0]=settingValue.toInt();
   }
   else if(settingName == "I1") {
-    firstDataByte[1]=settingValue.toInt();
+    ctrlrNrA[1]=settingValue.toInt();
   }
   else if(settingName == "I2") {
-    firstDataByte[2]=settingValue.toInt();
+    ctrlrNrA[2]=settingValue.toInt();
   }
   else if(settingName == "I3") {
-    firstDataByte[3]=settingValue.toInt();
+    ctrlrNrA[3]=settingValue.toInt();
   }
   else if(settingName == "I4") {
-    firstDataByte[4]=settingValue.toInt();
+    ctrlrNrA[4]=settingValue.toInt();
   }
   else if(settingName == "I5") {
-    firstDataByte[5]=settingValue.toInt();
+    ctrlrNrA[5]=settingValue.toInt();
   }
   else if(settingName == "I6") {
-    firstDataByte[6]=settingValue.toInt();
+    ctrlrNrA[6]=settingValue.toInt();
   }
   else if(settingName == "I7") {
-    firstDataByte[7]=settingValue.toInt();
+    ctrlrNrA[7]=settingValue.toInt();
   }
   else if(settingName == "I8") {
-    firstDataByte[8]=settingValue.toInt();
+    ctrlrNrA[8]=settingValue.toInt();
   }
   else if(settingName == "I9") {
-    firstDataByte[9]=settingValue.toInt();
+    ctrlrNrA[9]=settingValue.toInt();
   }
   else if(settingName == "J0") {
-    firstDataByteB[0]=settingValue.toInt();
+    ctrlrNrB[0]=settingValue.toInt();
   }
   else if(settingName == "J1") {
-    firstDataByteB[1]=settingValue.toInt();
+    ctrlrNrB[1]=settingValue.toInt();
   }
   else if(settingName == "J2") {
-    firstDataByteB[2]=settingValue.toInt();
+    ctrlrNrB[2]=settingValue.toInt();
   }
   else if(settingName == "J3") {
-    firstDataByteB[3]=settingValue.toInt();
+    ctrlrNrB[3]=settingValue.toInt();
   }
   else if(settingName == "J4") {
-    firstDataByteB[4]=settingValue.toInt();
+    ctrlrNrB[4]=settingValue.toInt();
   }
   else if(settingName == "J5") {
-    firstDataByteB[5]=settingValue.toInt();
+    ctrlrNrB[5]=settingValue.toInt();
   }
   else if(settingName == "J6") {
-    firstDataByteB[6]=settingValue.toInt();
+    ctrlrNrB[6]=settingValue.toInt();
   }
   else if(settingName == "J7") {
-    firstDataByteB[7]=settingValue.toInt();
+    ctrlrNrB[7]=settingValue.toInt();
   }
   else if(settingName == "J8") {
-    firstDataByteB[8]=settingValue.toInt();
+    ctrlrNrB[8]=settingValue.toInt();
   }
   else if(settingName == "J9") {
-    firstDataByteB[9]=settingValue.toInt();
+    ctrlrNrB[9]=settingValue.toInt();
   }
   else if(settingName == "K0") {
     dmpMinInValue[0]=toFloat(settingValue);
@@ -13177,67 +13182,67 @@ void about() {
   tft.setTextSize(2);
   tft.setTextColor(LIME);
   tft.setCursor(4, 8);
-  tft.print("MIDI Garden has been developed by");
+  tft.print(F("MIDI Garden has been developed by"));
   tft.setCursor(4, 30);
   tft.setTextColor(GRAY);
-  tft.print("Philipp Stute ");
+  tft.print(F("Philipp Stute "));
   tft.setTextColor(LIME);
-  tft.print("aka. Tom Trialanderror");
+  tft.print(F("aka. Tom Trialanderror"));
   tft.setCursor(4, 52);
-  tft.print("of Lime Labs.");
-  /*
+  tft.print(F("of Lime Labs."));
+  
   tft.setCursor(4, 96);
-  tft.print("Thanks dear members of the Facebook");
+  tft.print(F("Thanks dear members of the Facebook"));
   tft.setCursor(4, 118);
   tft.print("groups ");
   tft.setTextColor(GRAY);
-  tft.print("Synth DIY ");
+  tft.print(F("Synth DIY "));
   tft.setTextColor(LIME);
   tft.print("& ");
   tft.setTextColor(GRAY);
-  tft.print("The Hard, the Soft,");
+  tft.print(F("The Hard, the Soft,"));
   tft.setCursor(4, 140);
-  tft.print("and the Modular ");
+  tft.print(F("and the Modular "));
   tft.setTextColor(LIME);
-  tft.print("for making this project");
+  tft.print(F("for making this project"));
   tft.setCursor(4, 162);
-  tft.print("possible.");
-  */
+  tft.print(F("possible."));
+  
   tft.setCursor(4, 206);
-  tft.print("Thanks ");
+  tft.print(F("Thanks "));
   tft.setTextColor(GRAY);
-  tft.print("Pete Hartman");
+  tft.print(F("Pete Hartman"));
   tft.setTextColor(LIME);
-  tft.print(", ");
+  tft.print(F(", "));
   tft.setTextColor(GRAY);
-  tft.print("Quincas Moreira");
+  tft.print(F("Quincas Moreira"));
   tft.setTextColor(LIME);
-  tft.print(", ");
+  tft.print(F(", "));
   tft.setCursor(4, 228);
   tft.setTextColor(GRAY);
-  tft.print("HazardsMind ");
+  tft.print(F("HazardsMind "));
   tft.setTextColor(LIME);
-  tft.print("& ");
+  tft.print(F("& "));
   tft.setTextColor(GRAY);
-  tft.print("Steve Smith ");
+  tft.print(F("Steve Smith "));
   tft.setTextColor(LIME);
-  tft.print("for the help.");
+  tft.print(F("for the help."));
   
   tft.setCursor(4, 272);
-  tft.print("Thanks ");
+  tft.print(F("Thanks "));
   tft.setTextColor(GRAY);
-  tft.print("Arduino Team");
+  tft.print(F("Arduino Team"));
   tft.setTextColor(LIME);
-  tft.print(", ");
+  tft.print(F(", "));
   tft.setTextColor(GRAY);
-  tft.print("Jeff Rowberg ");
+  tft.print(F("Jeff Rowberg "));
   tft.setTextColor(LIME);
-  tft.print("& ");
+  tft.print(F("& "));
   tft.setCursor(4, 294);
   tft.setTextColor(GRAY);
-  tft.print("Adafruit Industries ");
+  tft.print(F("Adafruit Industries "));
   tft.setTextColor(LIME);
-  tft.print("for the libraries.");
+  tft.print(F("for the libraries."));
   
   // touchscreen loop
   while(inSetupMode == true) { 
