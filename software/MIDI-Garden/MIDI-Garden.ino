@@ -107,24 +107,18 @@ MPU6050 accelgyro;
 //--------------------------------------------------------------------------
 //-                                                         PIN DEFINITION -
 
-// TOUCHSCREEN PINS
-#define YP A3  // must be an analog pin, use "An" notation!
-#define XM A2  // must be an analog pin, use "An" notation!
-#define YM 23   // can be a digital pin
-#define XP 22   // can be a digital pin
-
-// TFT PINS
+#define YP A3 
+#define XM A2 
+#define YM 23 
+#define XP 22 
 #define LCD_CS A3
 #define LCD_CD A2
 #define LCD_WR A1
 #define LCD_RD A0
 #define LCD_RESET -1
 Adafruit_TFTLCD tft(LCD_CS, LCD_CD, LCD_WR, LCD_RD, LCD_RESET);
-
-// SD CARD
 #define SD_CS 44
-
-// DEFINITION OF SS_PIN AND DAC SETUP
+#define LED_PIN 13
 #define SS_PIN1 46
 #define SS_PIN2 47
 #define SS_PIN3 48
@@ -134,7 +128,6 @@ DAC_MCP49xx dac2(DAC_MCP49xx::MCP4922, SS_PIN2);
 DAC_MCP49xx dac3(DAC_MCP49xx::MCP4922, SS_PIN3);
 DAC_MCP49xx dac4(DAC_MCP49xx::MCP4922, SS_PIN4);
 
-// ANALOG INPUT PINS
 const int16_t analogInPin0 = A4; 
 const int16_t analogInPin1 = A5;
 const int16_t analogInPin2 = A6;
@@ -143,10 +136,6 @@ const int16_t analogInPin4 = A8;
 const int16_t analogInPin5 = A9;
 const int16_t analogInPin6 = A10;
 const int16_t analogInPin7 = A11;
-
-// LEDs
-#define LED_PIN 13 // (Arduino is 13, Teensy is 11, Teensy++ is 6)
-bool blinkState = false;
 const uint8_t errorLED = 37;
 const uint8_t out2LED = 38;
 
@@ -156,31 +145,29 @@ const uint8_t out2LED = 38;
 #define TS_MINY 80
 #define TS_MAXX 895
 #define TS_MAXY 926
-
-// For better pressure precision, we need to know the resistance
-// between X+ and X- Use any multimeter to read it
-// For the one we're using, its 300 ohms across the X plate
-TouchScreen ts = TouchScreen(XP, YP, XM, YM, 278);
-
 #define MINPRESSURE 15
 #define MAXPRESSURE 1000
 
+// For better pressure precision, we need to know the resistance
+// between X+ and X- Use any multimeter to read it
+// For the one I use, it is 278 ohms across the X plate
+TouchScreen ts = TouchScreen(XP, YP, XM, YM, 278);
+
 //--------------------------------------------------------------------------
 //-                                                       GLOBAL VARIABLES -
-// MOTION PROCESSING UNIT VARIABLES
+// MOTION PROCESSING UNIT 
 bool dmpReady = false;  // set true if DMP init was successful
 uint8_t mpuIntStatus;   // holds actual interrupt status byte from MPU
 uint8_t devStatus;      // return status after each device operation (0 = success, !0 = error)
 uint16_t packetSize;    // expected DMP packet size (default is 42 bytes)
 uint16_t fifoCount;     // count of all bytes currently in FIFO
 uint8_t fifoBuffer[64]; // FIFO storage buffer
-
 Quaternion q;
 VectorFloat gravity;
 float euler[3];
 float ypr[3];
 
-// MOTION SENSOR UNIT (MSU) CALIBRATION ROUTINE VARIABLES
+// MOTION SENSOR UNIT (MSU) CALIBRATION 
 int buffersize=1000;     // Amount of readings used to average, make it higher to get more precision but sketch will be slower  (default:1000)
 int16_t ax, ay, az,gx, gy, gz;
 int mean_ax,mean_ay,mean_az,mean_gx,mean_gy,mean_gz,state=0;
@@ -214,30 +201,30 @@ int16_t maxOutLimit[10] = {127, 127, 127, 127, 127, 127, 127, 127, 127, 127};
 boolean mute[10] = {true, true, true, true, true, true, true, true, true, true};
 uint8_t liveMode = 2;
 
-
+// SOME MORE VARIABLES 
 char sensorTypes[][8] = {"A-0", "A-1", "A-2", "A-3", "A-4", "A-5", "A-6", "A-7", "CV0", "CV1", "CV2", "CV3", "CV4", "CV5", "CV6", "CV7", "Roll 1", "Pitch 1", "Yaw 1", "Roll 2", "Pitch 2", "Yaw 2", "Acc X 1", "Acc Y 1", "Acc Z 1", "Acc X 2", "Acc Y 2", "Acc Z 2"};
 int16_t analogPinValue[8];
 uint8_t currentAnalogIn;
 
-// MENU HANDLING VARIABLES
+// MENU HANDLING
 uint8_t currentPatch;
 uint16_t currentColor;
 uint8_t userFriendlyPatchNumber;
 
-// VARIABLES FOR TOUCHSCREEN DEBOUNCING
+// TOUCHSCREEN DEBOUNCING
 boolean touchState;
 boolean lastTouchState = false;
 long lastDebounceTime = 0;
 long debounceDelay = 20; 
 boolean touched;
 
-// VARIABLES FOR KEYPAD
+// KEYPAD
 uint16_t currentValue = 0;
 uint8_t currentEntry = 13;
 boolean inKeyPadMode = false;
 uint8_t currentValueIdentifier = 0;
 
-//VARIABLES FOR ONSCREEN KEYBOARD
+// ONSCREEN KEYBOARD
 boolean inKeyboardMode = false;
 uint8_t currentTextIdentifier = 0;
 char charBuffer[8];
@@ -245,7 +232,7 @@ char currentChar = 22;
 uint8_t cursorPosition = 0;
 boolean uppercase = true;
 
-// MIDI HANDLING VARIABLES
+// MIDI HANDLING 
 const uint8_t nrpnMsb = 99;
 const uint8_t nrpnLsb = 98;
 const uint8_t rpnMsb = 101;
@@ -257,6 +244,16 @@ const uint8_t limit7bit = 127;
 const int16_t limit10bit = 1023;
 const int16_t limit14bit = 16383;
 
+// SD CARD STUFF
+File myFile;
+char pName[8];
+char pNameB[8];
+uint8_t fileId;
+
+// GRAPHICS STUFF
+uint16_t locator;
+uint16_t locator2;
+int16_t iBuff;
 
 // COLOR DEFINITION
 #define     FARBE(r, g, b)              (((r & 0xF8) << 8) | ((g & 0xFC) << 3) | ((b & 0xF8) >> 3))
@@ -276,20 +273,10 @@ const int16_t limit14bit = 16383;
 #define     COLOR7                      FARBE(0xF3, 0x05, 0x40)
 #define     COLOR4                      FARBE(0x00, 0xDA, 0xFF)
 #define     COLOR0                      FARBE(0x2F, 0xE6, 0x94)
-
 #define	RED 0xF800
 #define	GREEN 0x07E0
 
-// GRAPHICS STUFF
-uint16_t locator;
-uint16_t locator2;
-int16_t iBuff;
-
-// SD CARD STUFF
-File myFile;
-char pName[8];
-char pNameB[8];
-uint8_t fileId;
+bool blinkState = false;
 
 //====================================================================================
 //-                                                                       VOID setup =
@@ -357,7 +344,7 @@ void loop() {
     packetSize = mpu.dmpGetFIFOPacketSize(); // get expected DMP packet size for later comparison
   } 
   
-  // draw logos, OS version and website
+  // draw & print stuff
   bmpDraw("mg.bmp", 158, 6);
   tft.setTextSize(2);
   tft.setTextColor(LIME);
@@ -520,6 +507,7 @@ void liveModeC() {
 void patchSetup(int currentPatch){
   boolean inSetupMode = true;
   char arrowDown = 25;
+  
   switch (currentPatch) {
        case 0:
          currentColor = COLOR1;
@@ -562,63 +550,63 @@ void patchSetup(int currentPatch){
   tft.setCursor(8, 10); // text for button 1
   tft.setTextColor(BLACK);
   tft.setTextSize(2);
-  tft.print("Patch");
+  tft.print(F("Patch"));
   tft.setCursor(8, 31);
-  tft.print("Name");
+  tft.print(F("Name"));
   tft.fillRect(242, 4, 234, 48, currentColor);
   tft.setCursor(247, 10);
-  tft.print("Patch");
+  tft.print(F("Patch"));
   tft.fillRect(4, 56, 234, 48, currentColor);
   tft.setCursor(8, 62);
-  tft.print("Input");
+  tft.print(F("Input"));
   tft.fillRect(242, 56, 234, 48, currentColor);
   tft.setCursor(247, 62);
-  tft.print("Output");
+  tft.print(F("Output"));
   tft.fillRect(4, 108, 234, 48, currentColor);
   tft.setCursor(8, 114);
-  tft.print("Invert");
+  tft.print(F("Invert"));
   tft.setCursor(8, 135);
-  tft.print("Patch");
+  tft.print(F("Patch"));
   tft.fillRect(242, 108, 234, 48, currentColor);
   tft.setCursor(247, 114);
-  tft.print("Command");
+  tft.print(F("Command"));
   tft.fillRect(4, 160, 234, 48, currentColor);
   tft.setCursor(8, 166);
-  tft.print("Min In");
+  tft.print(F("Min In"));
   tft.setCursor(8, 187);
-  tft.print("Max In");
+  tft.print(F("Max In"));
   tft.fillRect(242, 160, 234, 48, currentColor);
   tft.setCursor(247, 166);
   switch (commandIdentifier[currentPatch]) {
         case 1:
-          tft.print("Control");
+          tft.print(F("Control"));
           tft.setCursor(247, 187);
-          tft.print("Change #");
+          tft.print(F("Change #"));
           tft.fillRect(242, 212, 234, 48, currentColor);
           break;
         case 2:
-          tft.print("MSB #");
+          tft.print(F("MSB #"));
           tft.fillRect(242, 212, 234, 48, currentColor);
           tft.setCursor(247, 218);
-          tft.print("LSB #");
+          tft.print(F("LSB #"));
           break;
         case 3:
-          tft.print("MSB #");
+          tft.print(F("MSB #"));
           tft.fillRect(242, 212, 234, 48, currentColor);
           tft.setCursor(247, 218);
-          tft.print("LSB #");
+          tft.print(F("LSB #"));
           break;
         case 4:
-          tft.print("MSB #");
+          tft.print(F("MSB #"));
           tft.fillRect(242, 212, 234, 48, currentColor);
           tft.setCursor(247, 218);
-          tft.print("LSB #");
+          tft.print(F("LSB #"));
           break;
         case 5:
-          tft.print("MSB #");
+          tft.print(F("MSB #"));
           tft.fillRect(242, 212, 234, 48, currentColor);
           tft.setCursor(247, 218);
-          tft.print("LSB #");
+          tft.print(F("LSB #"));
           break;
         case 6:
           tft.fillRect(242, 212, 234, 48, currentColor);
@@ -648,9 +636,9 @@ void patchSetup(int currentPatch){
 
   tft.fillRect(4, 212, 234, 48, currentColor);
   tft.setCursor(8, 218);
-  tft.print("Min Out");
+  tft.print(F("Min Out"));
   tft.setCursor(8, 239);
-  tft.print("Max Out");
+  tft.print(F("Max Out"));
 
   // print Current Values 
   tft.setCursor(108, 18);
@@ -710,10 +698,10 @@ void patchSetup(int currentPatch){
     tft.setTextSize(2);
     if(commandIdentifier[currentPatch] <= 5) {
       if(isMidiOut1[currentPatch] == true) {
-        tft.print("MIDI Out 1 CH");
+        tft.print(F("MIDI Out 1 CH"));
       }
       if(isMidiOut2[currentPatch] == true) {
-        tft.print("MIDI Out 2 CH");
+        tft.print(F("MIDI Out 2 CH"));
       }
       tft.setTextSize(3);
       tft.setCursor(436, 70);
@@ -725,16 +713,16 @@ void patchSetup(int currentPatch){
     else {
       tft.setTextSize(3);
       tft.setCursor(412, 70);
-      tft.print("CV");
+      tft.print(F("CV"));
       tft.print(commandIdentifier[currentPatch]-6);
     }
     tft.setCursor(398, 122);
     switch (commandIdentifier[currentPatch]) {
           case 1:
-            tft.print("  CC");
+            tft.print(F("  CC"));
             break;
           case 2:
-            tft.print("NRPN");
+            tft.print(F("NRPN"));
             tft.setCursor(418, 226);
             for(int x = countDigits(ctrlrNrB[currentPatch]); x < 3; x++) {
               tft.print("0");
@@ -742,7 +730,7 @@ void patchSetup(int currentPatch){
             tft.print(ctrlrNrB[currentPatch]);
             break;
           case 3:
-            tft.print(" RPN");
+            tft.print(F(" RPN"));
             tft.setCursor(418, 226);
             for(int x = countDigits(ctrlrNrB[currentPatch]); x < 3; x++) {
               tft.print("0");
@@ -750,7 +738,7 @@ void patchSetup(int currentPatch){
             tft.print(ctrlrNrB[currentPatch]);
             break;
           case 4:
-            tft.print("NR 7");
+            tft.print(F("NR 7"));
             tft.setCursor(418, 226);
             for(int x = countDigits(ctrlrNrB[currentPatch]); x < 3; x++) {
               tft.print("0");
@@ -758,7 +746,7 @@ void patchSetup(int currentPatch){
             tft.print(ctrlrNrB[currentPatch]);
             break;
           case 5:
-            tft.print("CC14");
+            tft.print(F("CC14"));
             tft.setCursor(418, 226);
             for(int x = countDigits(ctrlrNrB[currentPatch]); x < 3; x++) {
               tft.print("0");
@@ -766,28 +754,28 @@ void patchSetup(int currentPatch){
             tft.print(ctrlrNrB[currentPatch]);
             break;
           case 6:
-            tft.print("  CV");
+            tft.print(F("  CV"));
             break;
           case 7:
-            tft.print("  CV");
+            tft.print(F("  CV"));
             break;
           case 8:
-            tft.print("  CV");
+            tft.print(F("  CV"));
             break;
           case 9:
-            tft.print("  CV");
+            tft.print(F("  CV"));
             break;
           case 10:
-            tft.print("  CV");
+            tft.print(F("  CV"));
             break;
           case 11:
-            tft.print("  CV");
+            tft.print(F("  CV"));
             break;
           case 12:
-            tft.print("  CV");
+            tft.print(F("  CV"));
             break;
           case 13:
-            tft.print("  CV");
+            tft.print(F("  CV"));
             break;
     }
     tft.setCursor(418, 174);
@@ -802,15 +790,15 @@ void patchSetup(int currentPatch){
   tft.setTextColor(LTGRAY);
   tft.setTextSize(2);
   tft.setCursor(50, 282);
-  tft.print("SETUP");
+  tft.print(F("SETUP"));
   tft.drawRect(123, 264, 115, 48, LTGRAY);
   tft.setCursor(127, 270);
-  tft.print("LOAD/SAVE");
+  tft.print(F("LOAD/SAVE"));
   tft.setCursor(127, 291);
-  tft.print("PROGRAM");
+  tft.print(F("PROGRAM"));
   tft.drawRect(242, 264, 234, 48, LTGRAY);
   tft.setCursor(364, 291);
-  tft.print("LIVE MODE");
+  tft.print(F("LIVE MODE"));
 
   // touchscreen loop
   while(inSetupMode == true){
@@ -10623,9 +10611,9 @@ void buildLiveModeB(){
   tft.setTextColor(LTGRAY);
   tft.setTextSize(2);
   tft.setCursor(186, 8);
-  tft.print("Patch 1-5");
+  tft.print(F("Patch 1-5"));
   tft.setCursor(180, 166);
-  tft.print("Patch 6-10");
+  tft.print(F("Patch 6-10"));
   
   tft.setTextSize(3);
 
@@ -10881,9 +10869,9 @@ void buildLiveModeC(){
   tft.setTextColor(BLACK);
   tft.setTextSize(2);
   tft.setCursor(4, 13);
-  tft.print("Patch 1-5");
+  tft.print(F("Patch 1-5"));
   tft.setCursor(358, 13);
-  tft.print("Patch 6-10");
+  tft.print(F("Patch 6-10"));
 
   // draw button boxes
   tft.drawRect(0, 168, 48, 48, COLOR1);
@@ -12997,11 +12985,11 @@ void calibrateMSU() {
   tft.setTextSize(2);
   tft.setTextColor(LIME);
   tft.setCursor(4, 8);
-  tft.print("Place MSU in horizontal position.");
+  tft.print(F("Place MSU in horizontal position."));
   tft.setCursor(4, 30);
-  tft.print("Don't touch it from now on!");
+  tft.print(F("Don't touch it from now on!"));
   tft.setCursor(4, 52);
-  tft.print("Touch the screen when you are ready.");
+  tft.print(F("Touch the screen when you are ready."));
   
   // touchscreen loop 1
   while(placeSensor == false) { 
@@ -13030,14 +13018,14 @@ void calibrateMSU() {
   // read initial sensor data
   if (state==0){
     tft.setCursor(4, 118);
-    tft.print("Reading sensors for first time.");
+    tft.print(F("Reading sensors for first time."));
     meansensors();
     state++;
     delay(500);
   }
   
   tft.setCursor(4, 140);
-  tft.print("Calculating offsets...");
+  tft.print(F("Calculating offsets..."));
   
   // execute calibration
   if (state==1) {
@@ -13050,33 +13038,33 @@ void calibrateMSU() {
   if (state==2) {
     meansensors();
     tft.setCursor(4, 162);
-    tft.print("FINISHED!");
+    tft.print(F("FINISHED!"));
     tft.setCursor(4, 206);
-    tft.print("SRWO:");
+    tft.print(F("SRWO:"));
     tft.print(mean_az);
-    tft.print(", ");
+    tft.print(F(", "));
     tft.print(mean_gx);
-    tft.print(", ");
+    tft.print(F(", "));
     tft.print(mean_gy);
-    tft.print(", ");
+    tft.print(F(", "));
     tft.print(mean_gz);
     tft.setCursor(4, 228);
-    tft.print("AZ:");
+    tft.print(F("AZ:"));
     tft.print(az_offset);
-    tft.print(", GX:");
+    tft.print(F(", GX:"));
     tft.print(gx_offset);
-    tft.print(", GY:");
+    tft.print(F(", GY:"));
     tft.print(gy_offset);
-    tft.print(", GZ:");
+    tft.print(F(", GZ:"));
     tft.print(gz_offset);
   }
   
   //print instructions
   tft.setTextColor(LIME);
   tft.setCursor(4, 272);
-  tft.print("Please touch the screen to save");
+  tft.print(F("Please touch the screen to save"));
   tft.setCursor(4, 294);
-  tft.print("calibration data now!");
+  tft.print(F("calibration data now!"));
   
   // touchscreen loop 2
   while(placeSensor == true) { 
@@ -13092,11 +13080,11 @@ void calibrateMSU() {
   }
   tft.fillScreen(BLACK);
   tft.setCursor(4, 8);
-  tft.print("SAVED! MIDI Garden needs to reboot now.");
+  tft.print(F("SAVED! MIDI Garden needs to reboot now."));
   tft.setCursor(4, 52);
-  tft.print("Please switch it off, wait a few ");
+  tft.print(F("Please switch it off, wait a few "));
   tft.setCursor(4, 74);
-  tft.print("seconds, then switch it on again.");
+  tft.print(F("seconds, then switch it on again."));
   while(1);
 }
 
