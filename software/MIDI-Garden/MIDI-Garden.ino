@@ -181,12 +181,12 @@ void dmpDataReady() {
 
 // PRESET VARIABLES
 char patchNames[10][8] = {"AmpEnvS", "FltRes", "Osc1Wav", "Aftert", "Mod Wh", "Osc2Lv", "CC 15", "CC 33", "N/A", "N/A"};
-uint8_t sensorTypeIdentifier[10] = { 16, 17, 18, 6, 0, 1, 5, 2, 3, 4};
+uint8_t sTypeId[10] = { 16, 17, 18, 6, 0, 1, 5, 2, 3, 4};
 boolean isDmp[10] = {true, true, true, false, false, false, false, false, false, false};
 boolean isMidiOut1[10] = {true, true, true, true, true, true, true, true, true, true};
 boolean isMidiOut2[10] = {false, false, false, false, false, false, false, false, false, false};
 boolean isMidiOut3[10] = {false, false, false, false, false, false, false, false, false, false};
-uint8_t commandIdentifier[10] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
+uint8_t commandId[10] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
 uint8_t midiChan[10] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
 uint8_t ctrlrNrA[10] = {30, 21, 9, 1, 1, 17, 16, 15, 33, 0};
 uint8_t ctrlrNrB[10] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
@@ -577,7 +577,7 @@ void patchSetup(int currentPatch){
   tft.print(F("Max In"));
   tft.fillRect(242, 160, 234, 48, currentColor);
   tft.setCursor(247, 166);
-  switch (commandIdentifier[currentPatch]) {
+  switch (commandId[currentPatch]) {
         case 1:
           tft.print(F("Control"));
           tft.setCursor(247, 187);
@@ -645,11 +645,11 @@ void patchSetup(int currentPatch){
   tft.setTextSize(3);
   tft.print(patchNames[currentPatch]);
   tft.setCursor(108, 70);
-  tft.print(sensorTypes[sensorTypeIdentifier[currentPatch]]);
+  tft.print(sensorTypes[sTypeId[currentPatch]]);
   tft.setCursor(215, 122);
   tft.print(arrowDown);
   tft.setTextSize(2);
-  if(sensorTypeIdentifier[currentPatch] <=15) {
+  if(sTypeId[currentPatch] <=15) {
     tft.setCursor(173, 166);
     for(int x = countDigits(minInValue[currentPatch]); x < 5; x++) {
       tft.print(" ");
@@ -661,7 +661,7 @@ void patchSetup(int currentPatch){
     }
     tft.print(maxInValue[currentPatch]);
   }
-  else if(sensorTypeIdentifier[currentPatch] >= 16 && sensorTypeIdentifier[currentPatch] <= 21){
+  else if(sTypeId[currentPatch] >= 16 && sTypeId[currentPatch] <= 21){
     if(dmpMinInValue[currentPatch] < 0) {
       tft.setCursor(161, 166);
     }
@@ -696,7 +696,7 @@ void patchSetup(int currentPatch){
   if (midiChan[currentPatch] > 0 && midiChan[currentPatch] < 17){
     tft.setCursor(247, 83);
     tft.setTextSize(2);
-    if(commandIdentifier[currentPatch] <= 5) {
+    if(commandId[currentPatch] <= 5) {
       if(isMidiOut1[currentPatch] == true) {
         tft.print(F("MIDI Out 1 CH"));
       }
@@ -714,10 +714,10 @@ void patchSetup(int currentPatch){
       tft.setTextSize(3);
       tft.setCursor(412, 70);
       tft.print(F("CV"));
-      tft.print(commandIdentifier[currentPatch]-6);
+      tft.print(commandId[currentPatch]-6);
     }
     tft.setCursor(398, 122);
-    switch (commandIdentifier[currentPatch]) {
+    switch (commandId[currentPatch]) {
           case 1:
             tft.print(F("  CC"));
             break;
@@ -836,7 +836,7 @@ void patchSetup(int currentPatch){
             } 
             else if (p.y > 107 && p.y < 160) {
               // do something if Invert Sensor Button is hit
-              if(sensorTypeIdentifier[currentPatch] <= 15) {
+              if(sTypeId[currentPatch] <= 15) {
                 invertInt();
                 
                 tft.fillRect(158, 160, 80, 48, currentColor);
@@ -855,7 +855,7 @@ void patchSetup(int currentPatch){
                 tft.print(maxInValue[currentPatch]);
               }
               
-              else if(sensorTypeIdentifier[currentPatch] >= 16 && sensorTypeIdentifier[currentPatch] <= 21) {
+              else if(sTypeId[currentPatch] >= 16 && sTypeId[currentPatch] <= 21) {
                 invertFloat();
                 
                 tft.fillRect(158, 160, 80, 48, currentColor);
@@ -882,10 +882,10 @@ void patchSetup(int currentPatch){
             else if (p.y > 159 && p.y < 212) {
               // do something if Min In Max In Button is hit
               inSetupMode = false;
-              if(sensorTypeIdentifier[currentPatch] <= 15) {
+              if(sTypeId[currentPatch] <= 15) {
                 setInputRange();
               }
-              else if(sensorTypeIdentifier[currentPatch] == 16 || sensorTypeIdentifier[currentPatch] == 17 || sensorTypeIdentifier[currentPatch] == 19 || sensorTypeIdentifier[currentPatch] == 20) {
+              else if(sTypeId[currentPatch] == 16 || sTypeId[currentPatch] == 17 || sTypeId[currentPatch] == 19 || sTypeId[currentPatch] == 20) {
                 dmpRangeLearn();
               }
             } 
@@ -908,7 +908,7 @@ void patchSetup(int currentPatch){
             } 
             else if (p.y > 107 && p.y < 160) {
               // do something if Command Button is hit
-              if(commandIdentifier[currentPatch] <= 5) {
+              if(commandId[currentPatch] <= 5) {
                 inSetupMode = false;
                 selectCommandPage();
               }
@@ -920,7 +920,7 @@ void patchSetup(int currentPatch){
             } 
             else if (p.y > 211 && p.y < 264) {
               // do something if Command is NRPN or RPN and this button is hit
-              if(commandIdentifier[currentPatch] == 2 || commandIdentifier[currentPatch] == 3 || commandIdentifier[currentPatch] == 4 || commandIdentifier[currentPatch] == 5) {
+              if(commandId[currentPatch] == 2 || commandId[currentPatch] == 3 || commandId[currentPatch] == 4 || commandId[currentPatch] == 5) {
                 inSetupMode = false;
                 setLsbPage();
               }
@@ -2585,12 +2585,9 @@ void selectInputTypePage(){
   tft.fillRect(242, 56, 234, 100, currentColor);
   tft.setCursor(246, 62);
   tft.print(F("Acceleration"));
-  tft.fillRect(4, 160, 234, 100, currentColor);
+  tft.fillRect(4, 160, 472, 100, currentColor);
   tft.setCursor(8, 164);
   tft.print(F("Analog Sensor"));
-  tft.fillRect(242, 160, 234, 100, currentColor);
-  tft.setCursor(246, 164);
-  tft.print(F("CV Input"));
 
   // build bottom menu buttons
   tft.drawRect(4, 264, 115, 48, LTGRAY);
@@ -2619,35 +2616,24 @@ void selectInputTypePage(){
       swap(p.x, p.y);
       p.y = (320 - p.y);
       
-      if (p.x < 240) {
-        if (p.y > 55 &&  p.y < 158) { 
+      if (p.y > 55 & p.y < 158) {
+        if (p.x < 240) {
           // do something if GYRO is hit
           inSetupMode = false;
           selectGyroInputPage();
-          break;
-        } 
-        else if (p.y > 157 && p.y < 264) {
-          // do something if ANALOG SENSOR is hit
-          inSetupMode = false;
-          selectAnalogInputPage();          
-          break;
-        } 
-      }
-      else if (p.x > 239) {
-        if (p.y > 55 &&  p.y < 158) { 
+        }
+        else if (p.x > 239) {
           // do something if ACCELERATION is hit
           inSetupMode = false;
           selectAccInputPage();
-          break;
-        } 
-        else if (p.y > 157 && p.y < 264) {
-          // do something if CV INPUT is hit
-          inSetupMode = false;
-          selectCvInputPage();
-          break;
-        } 
+        }
       }
-      if (p.y > 263 && p.y < 320) {
+      else if (p.y > 157 && p.y < 264) {
+        // do something if ANALOG SENSOR is hit
+          inSetupMode = false;
+          selectAnalogInputPage();
+      }
+      else if (p.y > 263 && p.y < 320) {
         if (p.x > 3 &&  p.x < 119) { 
           // do something if SYSTEM SETUP button is hit
           inSetupMode = false;
@@ -2754,13 +2740,13 @@ void selectAnalogInputPage(){
       
       if (p.x > 3 && p.x < 119) {
         if (p.y > 55 &&  p.y < 160) { 
-          sensorTypeIdentifier[currentPatch] = 0; // sets Identifier to A-0 
+          sTypeId[currentPatch] = 0; // sets Identifier to A-0 
           isDmp[currentPatch] = false;
           patchSetup(currentPatch);
           break;
         } 
         else if (p.y > 159 && p.y < 264) {
-          sensorTypeIdentifier[currentPatch] = 4; // sets Identifier to A-4 
+          sTypeId[currentPatch] = 4; // sets Identifier to A-4 
           isDmp[currentPatch] = false;
           patchSetup(currentPatch);
           break;
@@ -2768,13 +2754,13 @@ void selectAnalogInputPage(){
       }
       else if (p.x > 122 && p.x < 238) {
         if (p.y > 55 &&  p.y < 160) { 
-          sensorTypeIdentifier[currentPatch] = 1; // sets Identifier to A-1 
+          sTypeId[currentPatch] = 1; // sets Identifier to A-1 
           isDmp[currentPatch] = false;
           patchSetup(currentPatch);
           break;
         } 
         else if (p.y > 159 && p.y < 264) {
-          sensorTypeIdentifier[currentPatch] = 5; // sets Identifier to A-5 
+          sTypeId[currentPatch] = 5; // sets Identifier to A-5 
           isDmp[currentPatch] = false;
           patchSetup(currentPatch);
           break;
@@ -2782,13 +2768,13 @@ void selectAnalogInputPage(){
       }
       else if (p.x > 243 && p.x < 359) {
         if (p.y > 55 &&  p.y < 160) { 
-          sensorTypeIdentifier[currentPatch] = 2; // sets Identifier to A-2
+          sTypeId[currentPatch] = 2; // sets Identifier to A-2
           isDmp[currentPatch] = false;
           patchSetup(currentPatch);
           break;
         } 
         else if (p.y > 159 && p.y < 264) {
-          sensorTypeIdentifier[currentPatch] = 6; // sets Identifier to A-6
+          sTypeId[currentPatch] = 6; // sets Identifier to A-6
           isDmp[currentPatch] = false;
           patchSetup(currentPatch);
           break;
@@ -2796,174 +2782,13 @@ void selectAnalogInputPage(){
       }
       else if (p.x > 359 && p.x < 479) {
         if (p.y > 55 &&  p.y < 160) { 
-          sensorTypeIdentifier[currentPatch] = 3; // sets Identifier to A-3
+          sTypeId[currentPatch] = 3; // sets Identifier to A-3
           isDmp[currentPatch] = false;
           patchSetup(currentPatch);
           break;
         } 
         else if (p.y > 159 && p.y < 264) {
-          sensorTypeIdentifier[currentPatch] = 7; // sets Identifier to A-7
-          isDmp[currentPatch] = false;
-          patchSetup(currentPatch);
-          break;
-        } 
-      }
-      if (p.y > 263 && p.y < 320) {
-        if (p.x > 3 &&  p.x < 119) { 
-          // do something if SYSTEM SETUP button is hit
-          inSetupMode = false;
-          systemSetup();
-        } 
-        else if (p.x > 122 && p.x < 238) {
-          // do something if CANCEL is hit
-          inSetupMode = false;
-          patchSetup(currentPatch);
-        } 
-        else if (p.x > 241 && p.x < 476) {
-          // do something if LIVE MODE Button is hit
-          switch (liveMode) {
-                case 1:
-                  inSetupMode = false;
-                  liveModeA();
-                  break;
-                case 2:
-                  inSetupMode = false;
-                  liveModeB();
-                  break;
-                case 3:
-                  inSetupMode = false;
-                  liveModeC();
-                  break;
-          }
-        } 
-      }
-    }
-  }
-}
-
-//====================================================================================
-//-                                                           VOID selectCvInputPage =
-void selectCvInputPage(){
-  boolean inSetupMode = true; 
-
-  tft.fillScreen(BLACK);
-
-  // build buttons and their writing
-  tft.drawRect(4, 4, 472, 48, LTGRAY);
-  tft.setCursor(50, 16);
-  tft.setTextColor(LTGRAY);
-  tft.setTextSize(3);
-  tft.print(F("Select Patch "));
-  if(userFriendlyPatchNumber < 10) tft.print(F("0"));
-  tft.print(userFriendlyPatchNumber);
-  tft.print(F(" Input"));
-  tft.fillRect(4, 56, 115, 100, currentColor);
-  
-  tft.setTextColor(BLACK);
-  tft.setTextSize(2);
-  tft.setCursor(8, 72);
-  tft.print(sensorTypes[8]);
-  tft.fillRect(123, 56, 115, 100, currentColor);
-  tft.setCursor(127, 72);
-  tft.print(sensorTypes[9]);
-  tft.fillRect(4, 160, 115, 100, currentColor);
-  tft.setCursor(8, 176);
-  tft.print(sensorTypes[12]);
-  tft.fillRect(123, 160, 115, 100, currentColor);
-  tft.setCursor(127, 176);
-  tft.print(sensorTypes[13]);
-
-  tft.fillRect(242, 56, 115, 100, currentColor);
-  tft.setCursor(246, 72);
-  tft.print(sensorTypes[10]);
-  tft.fillRect(361, 56, 115, 100, currentColor);
-  tft.setCursor(365, 72);
-  tft.print(sensorTypes[11]);
-  tft.fillRect(242, 160, 115, 100, currentColor);
-  tft.setCursor(246, 176);
-  tft.print(sensorTypes[14]);
-  tft.fillRect(361, 160, 115, 100, currentColor);
-  tft.setCursor(365, 176);
-  tft.print(sensorTypes[15]);
-
-  // build Bottom Menu Buttons
-  tft.drawRect(4, 264, 115, 48, LTGRAY);
-  tft.setTextColor(LTGRAY);
-  tft.setTextSize(2);
-  tft.setCursor(50, 282);
-  tft.print(F("SETUP"));
-  tft.drawRect(123, 264, 115, 48, LTGRAY);
-  tft.setCursor(127, 282);
-  tft.print(F("CANCEL"));
-  tft.drawRect(242, 264, 234, 48, LTGRAY);
-  tft.setCursor(364, 291);
-  tft.print(F("LIVE MODE"));
-
-  //TOUCH SCREEN LOOP
-  while(inSetupMode == true){
-
-    TSPoint p = ts.getPoint();
-
-    pinMode(XM, OUTPUT);
-    pinMode(YP, OUTPUT);
-
-    if (p.z > MINPRESSURE && p.z < MAXPRESSURE) {
-      p.x = map(p.x, TS_MINX, TS_MAXX, 0, tft.height());
-      p.y = map(p.y, TS_MINY, TS_MAXY, 0, tft.width());
-      swap(p.x, p.y);
-      p.y = (320 - p.y);
-      
-      if (p.x > 3 && p.x < 119) {
-        if (p.y > 55 &&  p.y < 160) { 
-          sensorTypeIdentifier[currentPatch] = 8; // sets Identifier to CV0 
-          isDmp[currentPatch] = false;
-          patchSetup(currentPatch);
-          break;
-        } 
-        else if (p.y > 159 && p.y < 264) {
-          sensorTypeIdentifier[currentPatch] = 12; // sets Identifier to CV4 
-          isDmp[currentPatch] = false;
-          patchSetup(currentPatch);
-          break;
-        } 
-      }
-      else if (p.x > 122 && p.x < 238) {
-        if (p.y > 55 &&  p.y < 160) { 
-          sensorTypeIdentifier[currentPatch] = 9; // sets Identifier to CV1 
-          isDmp[currentPatch] = false;
-          patchSetup(currentPatch);
-          break;
-        } 
-        else if (p.y > 159 && p.y < 264) {
-          sensorTypeIdentifier[currentPatch] = 13; // sets Identifier to CV5 
-          isDmp[currentPatch] = false;
-          patchSetup(currentPatch);
-          break;
-        } 
-      }
-      else if (p.x > 243 && p.x < 359) {
-        if (p.y > 55 &&  p.y < 160) { 
-          sensorTypeIdentifier[currentPatch] = 10; // sets Identifier to CV2
-          isDmp[currentPatch] = false;
-          patchSetup(currentPatch);
-          break;
-        } 
-        else if (p.y > 159 && p.y < 264) {
-          sensorTypeIdentifier[currentPatch] = 14; // sets Identifier to CV6
-          isDmp[currentPatch] = false;
-          patchSetup(currentPatch);
-          break;
-        } 
-      }
-      else if (p.x > 359 && p.x < 479) {
-        if (p.y > 55 &&  p.y < 160) { 
-          sensorTypeIdentifier[currentPatch] = 11; // sets Identifier to CV3
-          isDmp[currentPatch] = false;
-          patchSetup(currentPatch);
-          break;
-        } 
-        else if (p.y > 159 && p.y < 264) {
-          sensorTypeIdentifier[currentPatch] = 15; // sets Identifier to CV7
+          sTypeId[currentPatch] = 7; // sets Identifier to A-7
           isDmp[currentPatch] = false;
           patchSetup(currentPatch);
           break;
@@ -3073,7 +2898,7 @@ void selectGyroInputPage(){
       
       if (p.x > 3 && p.x < 119) {
         if (p.y > 55 &&  p.y < 160) { 
-          sensorTypeIdentifier[currentPatch] = 18; // sets Identifier to Yaw 1
+          sTypeId[currentPatch] = 18; // sets Identifier to Yaw 1
           isDmp[currentPatch] = true;
           dmpMinInValue[currentPatch] = -3.1416;
           dmpMaxInValue[currentPatch] = 3.1416;
@@ -3081,7 +2906,7 @@ void selectGyroInputPage(){
           break;
         } 
         else if (p.y > 159 && p.y < 264) {
-          sensorTypeIdentifier[currentPatch] = 21; // sets Identifier to Yaw 2 
+          sTypeId[currentPatch] = 21; // sets Identifier to Yaw 2 
           isDmp[currentPatch] = true;
           dmpMinInValue[currentPatch] = -3.1416;
           dmpMaxInValue[currentPatch] = 3.1416;
@@ -3091,13 +2916,13 @@ void selectGyroInputPage(){
       }
       else if (p.x > 122 && p.x < 238) {
         if (p.y > 55 &&  p.y < 160) { 
-          sensorTypeIdentifier[currentPatch] = 17; // sets Identifier to Pitch 1 
+          sTypeId[currentPatch] = 17; // sets Identifier to Pitch 1 
           isDmp[currentPatch] = true;
           dmpRangeLearn();
           break;
         } 
         else if (p.y > 159 && p.y < 264) {
-          sensorTypeIdentifier[currentPatch] = 20; // sets Identifier to Pitch 2 
+          sTypeId[currentPatch] = 20; // sets Identifier to Pitch 2 
           isDmp[currentPatch] = true;
           dmpRangeLearn();
           break;
@@ -3105,13 +2930,13 @@ void selectGyroInputPage(){
       }
       else if (p.x > 243 && p.x < 359) {
         if (p.y > 55 &&  p.y < 160) { 
-          sensorTypeIdentifier[currentPatch] = 16; // sets Identifier to Roll 1
+          sTypeId[currentPatch] = 16; // sets Identifier to Roll 1
           isDmp[currentPatch] = true;
           dmpRangeLearn();
           break;
         } 
         else if (p.y > 159 && p.y < 264) {
-          sensorTypeIdentifier[currentPatch] = 19; // sets Identifier to Roll 2
+          sTypeId[currentPatch] = 19; // sets Identifier to Roll 2
           isDmp[currentPatch] = true;
           dmpRangeLearn();
           break;
@@ -3162,13 +2987,13 @@ void dmpRangeLearn(){
   int16_t leftBar = 0;
   int16_t rightBar = 0;
   
-  if (sensorTypeIdentifier[currentPatch] == 16 || sensorTypeIdentifier[currentPatch] == 19) { // if roll axis
+  if (sTypeId[currentPatch] == 16 || sTypeId[currentPatch] == 19) { // if roll axis
     bottomValue = 1.3;
     newBottomValue = 1.3;
     topValue = -1.3;
     newTopValue = -1.3;
   }
-  else if (sensorTypeIdentifier[currentPatch] == 17 || sensorTypeIdentifier[currentPatch] == 20) { // if pitch axis
+  else if (sTypeId[currentPatch] == 17 || sTypeId[currentPatch] == 20) { // if pitch axis
     bottomValue = 1.3;
     newBottomValue = 1.3;
     topValue = -1.3;
@@ -3271,10 +3096,10 @@ void dmpRangeLearn(){
     mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
   
     // update left bar
-    if (sensorTypeIdentifier[currentPatch] == 16) {
+    if (sTypeId[currentPatch] == 16) {
       calibrationValue = ypr[2];
     }
-    else if (sensorTypeIdentifier[currentPatch] == 17) {
+    else if (sTypeId[currentPatch] == 17) {
       calibrationValue = ypr[1];
     }
   
@@ -3425,13 +3250,13 @@ void selectAccInputPage(){
       
       if (p.x > 3 && p.x < 119) {
         if (p.y > 55 &&  p.y < 160) { 
-          sensorTypeIdentifier[currentPatch] = 22; // sets Identifier to Acc X 1
+          sTypeId[currentPatch] = 22; // sets Identifier to Acc X 1
           isDmp[currentPatch] = true;
           patchSetup(currentPatch);
           break;
         } 
         else if (p.y > 159 && p.y < 264) {
-          sensorTypeIdentifier[currentPatch] = 25; // sets Identifier to Acc X 2 
+          sTypeId[currentPatch] = 25; // sets Identifier to Acc X 2 
           isDmp[currentPatch] = true;
           patchSetup(currentPatch);
           break;
@@ -3439,13 +3264,13 @@ void selectAccInputPage(){
       }
       else if (p.x > 122 && p.x < 238) {
         if (p.y > 55 &&  p.y < 160) { 
-          sensorTypeIdentifier[currentPatch] = 23; // sets Identifier to Acc Y 1 
+          sTypeId[currentPatch] = 23; // sets Identifier to Acc Y 1 
           isDmp[currentPatch] = true;
           patchSetup(currentPatch);
           break;
         } 
         else if (p.y > 159 && p.y < 264) {
-          sensorTypeIdentifier[currentPatch] = 26; // sets Identifier to Acc Y 2 
+          sTypeId[currentPatch] = 26; // sets Identifier to Acc Y 2 
           isDmp[currentPatch] = true;
           patchSetup(currentPatch);
           break;
@@ -3453,13 +3278,13 @@ void selectAccInputPage(){
       }
       else if (p.x > 243 && p.x < 359) {
         if (p.y > 55 &&  p.y < 160) { 
-          sensorTypeIdentifier[currentPatch] = 24; // sets Identifier to Acc Z 1
+          sTypeId[currentPatch] = 24; // sets Identifier to Acc Z 1
           isDmp[currentPatch] = true;
           patchSetup(currentPatch);
           break;
         } 
         else if (p.y > 159 && p.y < 264) {
-          sensorTypeIdentifier[currentPatch] = 27; // sets Identifier to Acc Z 2
+          sTypeId[currentPatch] = 27; // sets Identifier to Acc Z 2
           isDmp[currentPatch] = true;
           patchSetup(currentPatch);
           break;
@@ -3661,7 +3486,7 @@ void selectOutput(){
           isMidiOut1[currentPatch] = true;
           isMidiOut2[currentPatch] = false;
           midiChan[currentPatch] = 1;
-          if(commandIdentifier[currentPatch] >= 6) commandIdentifier[currentPatch] = 1;
+          if(commandId[currentPatch] >= 6) commandId[currentPatch] = 1;
           patchSetup(currentPatch);
           break;
         } 
@@ -3669,7 +3494,7 @@ void selectOutput(){
           isMidiOut1[currentPatch] = true;
           isMidiOut2[currentPatch] = false;
           midiChan[currentPatch] = 5;
-          if(commandIdentifier[currentPatch] >= 6) commandIdentifier[currentPatch] = 1;
+          if(commandId[currentPatch] >= 6) commandId[currentPatch] = 1;
           patchSetup(currentPatch);
           break;
         } 
@@ -3677,7 +3502,7 @@ void selectOutput(){
           isMidiOut1[currentPatch] = true;
           isMidiOut2[currentPatch] = false;
           midiChan[currentPatch] = 9;
-          if(commandIdentifier[currentPatch] >= 6) commandIdentifier[currentPatch] = 1;
+          if(commandId[currentPatch] >= 6) commandId[currentPatch] = 1;
           patchSetup(currentPatch);
           break;
         } 
@@ -3685,7 +3510,7 @@ void selectOutput(){
           isMidiOut1[currentPatch] = true;
           isMidiOut2[currentPatch] = false;
           midiChan[currentPatch] = 13;
-          if(commandIdentifier[currentPatch] >= 6) commandIdentifier[currentPatch] = 1;
+          if(commandId[currentPatch] >= 6) commandId[currentPatch] = 1;
           patchSetup(currentPatch);
           break;
         }
@@ -3695,7 +3520,7 @@ void selectOutput(){
           isMidiOut1[currentPatch] = true;
           isMidiOut2[currentPatch] = false;
           midiChan[currentPatch] = 2;
-          if(commandIdentifier[currentPatch] >= 6) commandIdentifier[currentPatch] = 1;
+          if(commandId[currentPatch] >= 6) commandId[currentPatch] = 1;
           patchSetup(currentPatch);
           break;
         } 
@@ -3703,7 +3528,7 @@ void selectOutput(){
           isMidiOut1[currentPatch] = true;
           isMidiOut2[currentPatch] = false;
           midiChan[currentPatch] = 6;
-          if(commandIdentifier[currentPatch] >= 6) commandIdentifier[currentPatch] = 1;
+          if(commandId[currentPatch] >= 6) commandId[currentPatch] = 1;
           patchSetup(currentPatch);
           break;
         } 
@@ -3711,7 +3536,7 @@ void selectOutput(){
           isMidiOut1[currentPatch] = true;
           isMidiOut2[currentPatch] = false;
           midiChan[currentPatch] = 10;
-          if(commandIdentifier[currentPatch] >= 6) commandIdentifier[currentPatch] = 1;
+          if(commandId[currentPatch] >= 6) commandId[currentPatch] = 1;
           patchSetup(currentPatch);
           break;
         } 
@@ -3719,7 +3544,7 @@ void selectOutput(){
           isMidiOut1[currentPatch] = true;
           isMidiOut2[currentPatch] = false;
           midiChan[currentPatch] = 14;
-          if(commandIdentifier[currentPatch] >= 6) commandIdentifier[currentPatch] = 1;
+          if(commandId[currentPatch] >= 6) commandId[currentPatch] = 1;
           patchSetup(currentPatch);
           break;
         }
@@ -3729,7 +3554,7 @@ void selectOutput(){
           isMidiOut1[currentPatch] = true;
           isMidiOut2[currentPatch] = false;
           midiChan[currentPatch] = 3;
-          if(commandIdentifier[currentPatch] >= 6) commandIdentifier[currentPatch] = 1;
+          if(commandId[currentPatch] >= 6) commandId[currentPatch] = 1;
           patchSetup(currentPatch);
           break;
         } 
@@ -3737,7 +3562,7 @@ void selectOutput(){
           isMidiOut1[currentPatch] = true;
           isMidiOut2[currentPatch] = false;
           midiChan[currentPatch] = 7;
-          if(commandIdentifier[currentPatch] >= 6) commandIdentifier[currentPatch] = 1;
+          if(commandId[currentPatch] >= 6) commandId[currentPatch] = 1;
           patchSetup(currentPatch);
           break;
         } 
@@ -3745,7 +3570,7 @@ void selectOutput(){
           isMidiOut1[currentPatch] = true;
           isMidiOut2[currentPatch] = false;
           midiChan[currentPatch] = 11;
-          if(commandIdentifier[currentPatch] >= 6) commandIdentifier[currentPatch] = 1;
+          if(commandId[currentPatch] >= 6) commandId[currentPatch] = 1;
           patchSetup(currentPatch);
           break;
         } 
@@ -3753,7 +3578,7 @@ void selectOutput(){
           isMidiOut1[currentPatch] = true;
           isMidiOut2[currentPatch] = false;
           midiChan[currentPatch] = 15;
-          if(commandIdentifier[currentPatch] >= 6) commandIdentifier[currentPatch] = 1;
+          if(commandId[currentPatch] >= 6) commandId[currentPatch] = 1;
           patchSetup(currentPatch);
           break;
         }
@@ -3763,7 +3588,7 @@ void selectOutput(){
           isMidiOut1[currentPatch] = true;
           isMidiOut2[currentPatch] = false;
           midiChan[currentPatch] = 4;
-          if(commandIdentifier[currentPatch] >= 6) commandIdentifier[currentPatch] = 1;
+          if(commandId[currentPatch] >= 6) commandId[currentPatch] = 1;
           patchSetup(currentPatch);
           break;
         } 
@@ -3771,7 +3596,7 @@ void selectOutput(){
           isMidiOut1[currentPatch] = true;
           isMidiOut2[currentPatch] = false;
           midiChan[currentPatch] = 8;
-          if(commandIdentifier[currentPatch] >= 6) commandIdentifier[currentPatch] = 1;
+          if(commandId[currentPatch] >= 6) commandId[currentPatch] = 1;
           patchSetup(currentPatch);
           break;
         } 
@@ -3779,7 +3604,7 @@ void selectOutput(){
           isMidiOut1[currentPatch] = true;
           isMidiOut2[currentPatch] = false;
           midiChan[currentPatch] = 12;
-          if(commandIdentifier[currentPatch] >= 6) commandIdentifier[currentPatch] = 1;
+          if(commandId[currentPatch] >= 6) commandId[currentPatch] = 1;
           patchSetup(currentPatch);
           break;
         } 
@@ -3787,7 +3612,7 @@ void selectOutput(){
           isMidiOut1[currentPatch] = true;
           isMidiOut2[currentPatch] = false;
           midiChan[currentPatch] = 16;
-          if(commandIdentifier[currentPatch] >= 6) commandIdentifier[currentPatch] = 1;
+          if(commandId[currentPatch] >= 6) commandId[currentPatch] = 1;
           patchSetup(currentPatch);
           break;
         }
@@ -3798,7 +3623,7 @@ void selectOutput(){
           isMidiOut1[currentPatch] = false;
           isMidiOut2[currentPatch] = true;
           midiChan[currentPatch] = 1;
-          if(commandIdentifier[currentPatch] >= 6) commandIdentifier[currentPatch] = 1;
+          if(commandId[currentPatch] >= 6) commandId[currentPatch] = 1;
           patchSetup(currentPatch);
           break;
         } 
@@ -3806,7 +3631,7 @@ void selectOutput(){
           isMidiOut1[currentPatch] = false;
           isMidiOut2[currentPatch] = true;
           midiChan[currentPatch] = 5;
-          if(commandIdentifier[currentPatch] >= 6) commandIdentifier[currentPatch] = 1;
+          if(commandId[currentPatch] >= 6) commandId[currentPatch] = 1;
           patchSetup(currentPatch);
           break;
         } 
@@ -3814,7 +3639,7 @@ void selectOutput(){
           isMidiOut1[currentPatch] = false;
           isMidiOut2[currentPatch] = true;
           midiChan[currentPatch] = 9;
-          if(commandIdentifier[currentPatch] >= 6) commandIdentifier[currentPatch] = 1;
+          if(commandId[currentPatch] >= 6) commandId[currentPatch] = 1;
           patchSetup(currentPatch);
           break;
         } 
@@ -3822,7 +3647,7 @@ void selectOutput(){
           isMidiOut1[currentPatch] = false;
           isMidiOut2[currentPatch] = true;
           midiChan[currentPatch] = 13;
-          if(commandIdentifier[currentPatch] >= 6) commandIdentifier[currentPatch] = 1;
+          if(commandId[currentPatch] >= 6) commandId[currentPatch] = 1;
           patchSetup(currentPatch);
           break;
         }
@@ -3832,7 +3657,7 @@ void selectOutput(){
           isMidiOut1[currentPatch] = false;
           isMidiOut2[currentPatch] = true;
           midiChan[currentPatch] = 2;
-          if(commandIdentifier[currentPatch] >= 6) commandIdentifier[currentPatch] = 1;
+          if(commandId[currentPatch] >= 6) commandId[currentPatch] = 1;
           patchSetup(currentPatch);
           break;
         } 
@@ -3840,7 +3665,7 @@ void selectOutput(){
           isMidiOut1[currentPatch] = false;
           isMidiOut2[currentPatch] = true;
           midiChan[currentPatch] = 6;
-          if(commandIdentifier[currentPatch] >= 6) commandIdentifier[currentPatch] = 1;
+          if(commandId[currentPatch] >= 6) commandId[currentPatch] = 1;
           patchSetup(currentPatch);
           break;
         } 
@@ -3848,7 +3673,7 @@ void selectOutput(){
           isMidiOut1[currentPatch] = false;
           isMidiOut2[currentPatch] = true;
           midiChan[currentPatch] = 10;
-          if(commandIdentifier[currentPatch] >= 6) commandIdentifier[currentPatch] = 1;
+          if(commandId[currentPatch] >= 6) commandId[currentPatch] = 1;
           patchSetup(currentPatch);
           break;
         } 
@@ -3856,7 +3681,7 @@ void selectOutput(){
           isMidiOut1[currentPatch] = false;
           isMidiOut2[currentPatch] = true;
           midiChan[currentPatch] = 14;
-          if(commandIdentifier[currentPatch] >= 6) commandIdentifier[currentPatch] = 1;
+          if(commandId[currentPatch] >= 6) commandId[currentPatch] = 1;
           patchSetup(currentPatch);
           break;
         }
@@ -3866,7 +3691,7 @@ void selectOutput(){
           isMidiOut1[currentPatch] = false;
           isMidiOut2[currentPatch] = true;
           midiChan[currentPatch] = 3;
-          if(commandIdentifier[currentPatch] >= 6) commandIdentifier[currentPatch] = 1;
+          if(commandId[currentPatch] >= 6) commandId[currentPatch] = 1;
           patchSetup(currentPatch);
           break;
         } 
@@ -3874,7 +3699,7 @@ void selectOutput(){
           isMidiOut1[currentPatch] = false;
           isMidiOut2[currentPatch] = true;
           midiChan[currentPatch] = 7;
-          if(commandIdentifier[currentPatch] >= 6) commandIdentifier[currentPatch] = 1;
+          if(commandId[currentPatch] >= 6) commandId[currentPatch] = 1;
           patchSetup(currentPatch);
           break;
         } 
@@ -3882,7 +3707,7 @@ void selectOutput(){
           isMidiOut1[currentPatch] = false;
           isMidiOut2[currentPatch] = true;
           midiChan[currentPatch] = 11;
-          if(commandIdentifier[currentPatch] >= 6) commandIdentifier[currentPatch] = 1;
+          if(commandId[currentPatch] >= 6) commandId[currentPatch] = 1;
           patchSetup(currentPatch);
           break;
         } 
@@ -3890,7 +3715,7 @@ void selectOutput(){
           isMidiOut1[currentPatch] = false;
           isMidiOut2[currentPatch] = true;
           midiChan[currentPatch] = 15;
-          if(commandIdentifier[currentPatch] >= 6) commandIdentifier[currentPatch] = 1;
+          if(commandId[currentPatch] >= 6) commandId[currentPatch] = 1;
           patchSetup(currentPatch);
           break;
         }
@@ -3900,7 +3725,7 @@ void selectOutput(){
           isMidiOut1[currentPatch] = false;
           isMidiOut2[currentPatch] = true;
           midiChan[currentPatch] = 4;
-          if(commandIdentifier[currentPatch] >= 6) commandIdentifier[currentPatch] = 1;
+          if(commandId[currentPatch] >= 6) commandId[currentPatch] = 1;
           patchSetup(currentPatch);
           break;
         } 
@@ -3908,7 +3733,7 @@ void selectOutput(){
           isMidiOut1[currentPatch] = false;
           isMidiOut2[currentPatch] = true;
           midiChan[currentPatch] = 8;
-          if(commandIdentifier[currentPatch] >= 6) commandIdentifier[currentPatch] = 1;
+          if(commandId[currentPatch] >= 6) commandId[currentPatch] = 1;
           patchSetup(currentPatch);
           break;
         } 
@@ -3916,7 +3741,7 @@ void selectOutput(){
           isMidiOut1[currentPatch] = false;
           isMidiOut2[currentPatch] = true;
           midiChan[currentPatch] = 12;
-          if(commandIdentifier[currentPatch] >= 6) commandIdentifier[currentPatch] = 1;
+          if(commandId[currentPatch] >= 6) commandId[currentPatch] = 1;
           patchSetup(currentPatch);
           break;
         } 
@@ -3924,7 +3749,7 @@ void selectOutput(){
           isMidiOut1[currentPatch] = false;
           isMidiOut2[currentPatch] = true;
           midiChan[currentPatch] = 16;
-          if(commandIdentifier[currentPatch] >= 6) commandIdentifier[currentPatch] = 1;
+          if(commandId[currentPatch] >= 6) commandId[currentPatch] = 1;
           patchSetup(currentPatch);
           break;
         }
@@ -4035,28 +3860,28 @@ void selectCvOutPage(){
         
       if (p.x > 3 && p.x < 238) {
         if (p.y > 55 && p.y < 108) {
-          commandIdentifier[currentPatch] = 6; //sets command identifier for current patch to CV Out 0
+          commandId[currentPatch] = 6; //sets command identifier for current patch to CV Out 0
           maxOutValue[currentPatch] = 4095;
           maxOutLimit[currentPatch] = 4095;
           patchSetup(currentPatch);
           break;
         } 
         else if (p.y > 107 && p.y < 160) {
-          commandIdentifier[currentPatch] = 7; //sets command identifier for current patch to CV Out 1
+          commandId[currentPatch] = 7; //sets command identifier for current patch to CV Out 1
           maxOutValue[currentPatch] = 4095;
           maxOutLimit[currentPatch] = 4095;
           patchSetup(currentPatch);
           break;
         } 
         else if (p.y > 159 && p.y < 212) {
-          commandIdentifier[currentPatch] = 8; //sets command identifier for current patch to CV Out 2
+          commandId[currentPatch] = 8; //sets command identifier for current patch to CV Out 2
           maxOutValue[currentPatch] = 4095;
           maxOutLimit[currentPatch] = 4095;
           patchSetup(currentPatch);
           break;
         } 
         else if (p.y > 211 && p.y < 264) {
-          commandIdentifier[currentPatch] = 9; //sets command identifier for current patch to CV Out 3
+          commandId[currentPatch] = 9; //sets command identifier for current patch to CV Out 3
           maxOutValue[currentPatch] = 4095;
           maxOutLimit[currentPatch] = 4095;
           patchSetup(currentPatch);
@@ -4065,28 +3890,28 @@ void selectCvOutPage(){
       } 
       else if (p.x > 243 && p.x < 447) {
         if (p.y > 55 &&  p.y < 108) { 
-          commandIdentifier[currentPatch] = 10; //sets command identifier for current patch to CV Out 4
+          commandId[currentPatch] = 10; //sets command identifier for current patch to CV Out 4
           maxOutValue[currentPatch] = 4095;
           maxOutLimit[currentPatch] = 4095;
           patchSetup(currentPatch);
           break;
         } 
         else if (p.y > 107 && p.y < 160) {
-          commandIdentifier[currentPatch] = 11; //sets command identifier for current patch to CV Out 5
+          commandId[currentPatch] = 11; //sets command identifier for current patch to CV Out 5
           maxOutValue[currentPatch] = 4095;
           maxOutLimit[currentPatch] = 4095;
           patchSetup(currentPatch);
           break;
         } 
         else if (p.y > 159 && p.y < 212) {
-          commandIdentifier[currentPatch] = 12; //sets command identifier for current patch to CV Out 6
+          commandId[currentPatch] = 12; //sets command identifier for current patch to CV Out 6
           maxOutValue[currentPatch] = 4095;
           maxOutLimit[currentPatch] = 4095;
           patchSetup(currentPatch);
           break;
         } 
         else if (p.y > 211 && p.y < 264) {
-          commandIdentifier[currentPatch] = 13; //sets command identifier for current patch to CV Out 7
+          commandId[currentPatch] = 13; //sets command identifier for current patch to CV Out 7
           maxOutValue[currentPatch] = 4095;
           maxOutLimit[currentPatch] = 4095;
           patchSetup(currentPatch);
@@ -4330,28 +4155,28 @@ void selectCommandPage(){
         
       if (p.x > 3 && p.x < 238) {
         if (p.y > 55 && p.y < 108) {
-          commandIdentifier[currentPatch] = 1; //sets command identifier for current patch to CC
+          commandId[currentPatch] = 1; //sets command identifier for current patch to CC
           maxOutValue[currentPatch] = 127;
           maxOutLimit[currentPatch] = 127;
           patchSetup(currentPatch);
           break;
         } 
         else if (p.y > 107 && p.y < 160) {
-          commandIdentifier[currentPatch] = 2; //sets command identifier for current patch to NRPN
+          commandId[currentPatch] = 2; //sets command identifier for current patch to NRPN
           maxOutValue[currentPatch] = 16383;
           maxOutLimit[currentPatch] = 16383;
           patchSetup(currentPatch);
           break;
         } 
         else if (p.y > 159 && p.y < 212) {
-          commandIdentifier[currentPatch] = 4; //sets command identifier for current patch to NRPN 7bit
+          commandId[currentPatch] = 4; //sets command identifier for current patch to NRPN 7bit
           maxOutValue[currentPatch] = 127;
           maxOutLimit[currentPatch] = 127;
           patchSetup(currentPatch);
           break;
         } 
         else if (p.y > 211 && p.y < 264) {
-          commandIdentifier[currentPatch] = 3; //sets command identifier for current patch to RPN
+          commandId[currentPatch] = 3; //sets command identifier for current patch to RPN
           maxOutValue[currentPatch] = 16383;
           maxOutLimit[currentPatch] = 16383;
           patchSetup(currentPatch);
@@ -4360,7 +4185,7 @@ void selectCommandPage(){
       } 
       else if (p.x > 243 && p.x < 447) {
         if (p.y > 55 &&  p.y < 108) { 
-          commandIdentifier[currentPatch] = 5; //sets command identifier for current patch to CC 14bit
+          commandId[currentPatch] = 5; //sets command identifier for current patch to CC 14bit
           maxOutValue[currentPatch] = 16383;
           maxOutLimit[currentPatch] = 16383;
           patchSetup(currentPatch);
@@ -4862,101 +4687,101 @@ void touchscreenLiveMode(){
         }
         else if (p.y < 316 && p.y > 187) {
           if (p.x < 48) { 
-            if(sensorTypeIdentifier[0] <= 15) {
+            if(sTypeId[0] <= 15) {
               currentPatch = 0;
               invertInt();
             } 
-            else if(sensorTypeIdentifier[0] >= 16 && sensorTypeIdentifier[0] <= 21) {
+            else if(sTypeId[0] >= 16 && sTypeId[0] <= 21) {
               currentPatch = 0;
               invertFloat();
             }
           } 
           else if (p.x < 96) {
-            if(sensorTypeIdentifier[1] <= 15) {
+            if(sTypeId[1] <= 15) {
               currentPatch = 1;
               invertInt();
             } 
-            else if(sensorTypeIdentifier[1] >= 16 && sensorTypeIdentifier[1] <= 21) {
+            else if(sTypeId[1] >= 16 && sTypeId[1] <= 21) {
               currentPatch = 1;
               invertFloat();
             }
           } 
           else if (p.x < 144) {
-            if(sensorTypeIdentifier[2] <= 15) {
+            if(sTypeId[2] <= 15) {
               currentPatch = 2;
               invertInt();
             } 
-            else if(sensorTypeIdentifier[2] >= 16 && sensorTypeIdentifier[2] <= 21) {
+            else if(sTypeId[2] >= 16 && sTypeId[2] <= 21) {
               currentPatch = 2;
               invertFloat();
             }
           } 
           else if (p.x < 192) {
-            if(sensorTypeIdentifier[3] <= 15) {
+            if(sTypeId[3] <= 15) {
               currentPatch = 3;
               invertInt();
             } 
-            else if(sensorTypeIdentifier[3] >= 16 && sensorTypeIdentifier[3] <= 21) {
+            else if(sTypeId[3] >= 16 && sTypeId[3] <= 21) {
               currentPatch = 3;
               invertFloat();
             }
           } 
           else if (p.x < 240) {
-            if(sensorTypeIdentifier[4] <= 15) {
+            if(sTypeId[4] <= 15) {
               currentPatch = 4;
               invertInt();
             } 
-            else if(sensorTypeIdentifier[4] >= 16 && sensorTypeIdentifier[4] <= 21) {
+            else if(sTypeId[4] >= 16 && sTypeId[4] <= 21) {
               currentPatch = 5;
               invertFloat();
             }
           } 
           else if (p.x < 288) {
-            if(sensorTypeIdentifier[5] <= 15) {
+            if(sTypeId[5] <= 15) {
               currentPatch = 5;
               invertInt();
             } 
-            else if(sensorTypeIdentifier[5] >= 16 && sensorTypeIdentifier[5] <= 21) {
+            else if(sTypeId[5] >= 16 && sTypeId[5] <= 21) {
               currentPatch = 6;
               invertFloat();
             }
           } 
           else if (p.x < 336) {
-            if(sensorTypeIdentifier[6] <= 15) {
+            if(sTypeId[6] <= 15) {
               currentPatch = 6;
               invertInt();
             } 
-            else if(sensorTypeIdentifier[6] >= 16 && sensorTypeIdentifier[6] <= 21) {
+            else if(sTypeId[6] >= 16 && sTypeId[6] <= 21) {
               currentPatch = 6;
               invertFloat();
             }
           } 
           else if (p.x < 384) {
-            if(sensorTypeIdentifier[7] <= 15) {
+            if(sTypeId[7] <= 15) {
               currentPatch = 7;
               invertInt();
             }
-            else if(sensorTypeIdentifier[7] >= 16 && sensorTypeIdentifier[7] <= 21) {
+            else if(sTypeId[7] >= 16 && sTypeId[7] <= 21) {
               currentPatch = 7;
               invertFloat();
             }
           } 
           else if (p.x < 432) {
-            if(sensorTypeIdentifier[8] <= 15) {
+            if(sTypeId[8] <= 15) {
               currentPatch = 8;
               invertInt();
             } 
-            else if(sensorTypeIdentifier[8] >= 16 && sensorTypeIdentifier[8] <= 21) {
+            else if(sTypeId[8] >= 16 && sTypeId[8] <= 21) {
               currentPatch = 8;
               invertFloat();
             }
           } 
           else if (p.x < 480) {
-            if(sensorTypeIdentifier[9] <= 15) {
+            if(sTypeId[9] <= 15) {
               currentPatch = 9;
               invertInt();
             } 
-            else if(sensorTypeIdentifier[9] >= 16 && sensorTypeIdentifier[9] <= 21) {
+            else if(sTypeId[9] >= 16 && sTypeId[9] <= 21) {
               currentPatch = 9;
               invertFloat();
             }
@@ -5376,101 +5201,101 @@ void touchscreenLiveModeC(){
         }
         else if (p.y <= 308 && p.y >= 262) {
           if (p.x < 48) { 
-            if(sensorTypeIdentifier[0] <= 15) {
+            if(sTypeId[0] <= 15) {
               currentPatch = 0;
               invertInt();
             } 
-            else if(sensorTypeIdentifier[0] >= 16 && sensorTypeIdentifier[0] <= 21) {
+            else if(sTypeId[0] >= 16 && sTypeId[0] <= 21) {
               currentPatch = 0;
               invertFloat();
             }
           } 
           else if (p.x < 96) {
-            if(sensorTypeIdentifier[1] <= 15) {
+            if(sTypeId[1] <= 15) {
               currentPatch = 1;
               invertInt();
             } 
-            else if(sensorTypeIdentifier[1] >= 16 && sensorTypeIdentifier[1] <= 21) {
+            else if(sTypeId[1] >= 16 && sTypeId[1] <= 21) {
               currentPatch = 1;
               invertFloat();
             }
           } 
           else if (p.x < 144) {
-            if(sensorTypeIdentifier[2] <= 15) {
+            if(sTypeId[2] <= 15) {
               currentPatch = 2;
               invertInt();
             } 
-            else if(sensorTypeIdentifier[2] >= 16 && sensorTypeIdentifier[2] <= 21) {
+            else if(sTypeId[2] >= 16 && sTypeId[2] <= 21) {
               currentPatch = 2;
               invertFloat();
             }
           } 
           else if (p.x < 192) {
-            if(sensorTypeIdentifier[3] <= 15) {
+            if(sTypeId[3] <= 15) {
               currentPatch = 3;
               invertInt();
             } 
-            else if(sensorTypeIdentifier[3] >= 16 && sensorTypeIdentifier[3] <= 21) {
+            else if(sTypeId[3] >= 16 && sTypeId[3] <= 21) {
               currentPatch = 3;
               invertFloat();
             }
           } 
           else if (p.x < 240) {
-            if(sensorTypeIdentifier[4] <= 15) {
+            if(sTypeId[4] <= 15) {
               currentPatch = 4;
               invertInt();
             } 
-            else if(sensorTypeIdentifier[4] >= 16 && sensorTypeIdentifier[4] <= 21) {
+            else if(sTypeId[4] >= 16 && sTypeId[4] <= 21) {
               currentPatch = 5;
               invertFloat();
             }
           } 
           else if (p.x < 288) {
-            if(sensorTypeIdentifier[5] <= 15) {
+            if(sTypeId[5] <= 15) {
               currentPatch = 5;
               invertInt();
             } 
-            else if(sensorTypeIdentifier[5] >= 16 && sensorTypeIdentifier[5] <= 21) {
+            else if(sTypeId[5] >= 16 && sTypeId[5] <= 21) {
               currentPatch = 6;
               invertFloat();
             }
           } 
           else if (p.x < 336) {
-            if(sensorTypeIdentifier[6] <= 15) {
+            if(sTypeId[6] <= 15) {
               currentPatch = 6;
               invertInt();
             } 
-            else if(sensorTypeIdentifier[6] >= 16 && sensorTypeIdentifier[6] <= 21) {
+            else if(sTypeId[6] >= 16 && sTypeId[6] <= 21) {
               currentPatch = 6;
               invertFloat();
             }
           } 
           else if (p.x < 384) {
-            if(sensorTypeIdentifier[7] <= 15) {
+            if(sTypeId[7] <= 15) {
               currentPatch = 7;
               invertInt();
             }
-            else if(sensorTypeIdentifier[7] >= 16 && sensorTypeIdentifier[7] <= 21) {
+            else if(sTypeId[7] >= 16 && sTypeId[7] <= 21) {
               currentPatch = 7;
               invertFloat();
             }
           } 
           else if (p.x < 432) {
-            if(sensorTypeIdentifier[8] <= 15) {
+            if(sTypeId[8] <= 15) {
               currentPatch = 8;
               invertInt();
             } 
-            else if(sensorTypeIdentifier[8] >= 16 && sensorTypeIdentifier[8] <= 21) {
+            else if(sTypeId[8] >= 16 && sTypeId[8] <= 21) {
               currentPatch = 8;
               invertFloat();
             }
           } 
           else if (p.x < 480) {
-            if(sensorTypeIdentifier[9] <= 15) {
+            if(sTypeId[9] <= 15) {
               currentPatch = 9;
               invertInt();
             } 
-            else if(sensorTypeIdentifier[9] >= 16 && sensorTypeIdentifier[9] <= 21) {
+            else if(sTypeId[9] >= 16 && sTypeId[9] <= 21) {
               currentPatch = 9;
               invertFloat();
             }
@@ -5516,8 +5341,8 @@ void keyPadEntry() {
   if(userFriendlyPatchNumber < 10) tft.print("0");
   tft.print(userFriendlyPatchNumber);
   if(currentValueIdentifier == 1 || currentValueIdentifier == 2) tft.print(F(" Output Range"));
-  else if(currentValueIdentifier == 5 && commandIdentifier[currentPatch] == 1) tft.print(F(" CC#"));
-  else if(currentValueIdentifier == 5 && commandIdentifier[currentPatch] == 2) tft.print(F(" MSB#"));
+  else if(currentValueIdentifier == 5 && commandId[currentPatch] == 1) tft.print(F(" CC#"));
+  else if(currentValueIdentifier == 5 && commandId[currentPatch] == 2) tft.print(F(" MSB#"));
   else if(currentValueIdentifier == 6) tft.print(F(" LSB#"));
   tft.setTextColor(BLACK);
   buildValueWindow();
@@ -5619,8 +5444,8 @@ void buildValueWindow() {
     tft.print(maxInValue[currentPatch]);
   } 
   else if(currentValueIdentifier == 5) {
-    if(commandIdentifier[currentPatch] == 1) tft.print(F("CC#"));
-    else if(commandIdentifier[currentPatch] == 2 || commandIdentifier[currentPatch] == 3) tft.print(F("MSB#"));
+    if(commandId[currentPatch] == 1) tft.print(F("CC#"));
+    else if(commandId[currentPatch] == 2 || commandId[currentPatch] == 3) tft.print(F("MSB#"));
     tft.setTextColor(GRAY);
     tft.setTextSize(3);
     tft.setCursor(10, 100);
@@ -6440,7 +6265,7 @@ void processDigitalSensors(){
     
     if(mute[0] == false) {
       if(isDmp[0] == true) {
-        switch (sensorTypeIdentifier[0]) {
+        switch (sTypeId[0]) {
               case 16:
                 patchValue[0] = mapfloat(ypr[2], dmpMaxInValue[0], dmpMinInValue[0], minOutValue[0], maxOutValue[0]);
                 break;
@@ -6461,7 +6286,7 @@ void processDigitalSensors(){
                 break;
         }
         patchValue[0] = constrain(patchValue[0], minOutValue[0], maxOutValue[0]);
-        switch (commandIdentifier[0]) {
+        switch (commandId[0]) {
               case 1: 
                 if(isMidiOut1[0] == true) {
                   // send command via MIDI Out 1
@@ -6567,7 +6392,7 @@ void processDigitalSensors(){
     }
     if(mute[1] == false) {
       if(isDmp[1] == true) {
-        switch (sensorTypeIdentifier[1]) {
+        switch (sTypeId[1]) {
               case 16:
                 patchValue[1] = mapfloat(ypr[2], dmpMaxInValue[1], dmpMinInValue[1], minOutValue[1], maxOutValue[1]);
                 break;
@@ -6588,7 +6413,7 @@ void processDigitalSensors(){
                 break;
         }
         patchValue[1] = constrain(patchValue[1], minOutValue[1], maxOutValue[1]);
-        switch (commandIdentifier[1]) {
+        switch (commandId[1]) {
               case 1: 
                 if(isMidiOut1[1] == true) {
                   // send command via MIDI Out 1
@@ -6694,7 +6519,7 @@ void processDigitalSensors(){
     }
     if(mute[2] == false) {
       if(isDmp[2] == true) {
-        switch (sensorTypeIdentifier[2]) {
+        switch (sTypeId[2]) {
               case 16:
                 patchValue[2] = mapfloat(ypr[2], dmpMaxInValue[2], dmpMinInValue[2], minOutValue[2], maxOutValue[2]);
                 break;
@@ -6715,7 +6540,7 @@ void processDigitalSensors(){
                 break;
         }
         patchValue[2] = constrain(patchValue[2], minOutValue[2], maxOutValue[2]);
-        switch (commandIdentifier[2]) {
+        switch (commandId[2]) {
               case 1: 
                 if(isMidiOut1[2] == true) {
                   // send command via MIDI Out 1
@@ -6821,7 +6646,7 @@ void processDigitalSensors(){
     }
     if(mute[3] == false) {
       if(isDmp[3] == true) {
-        switch (sensorTypeIdentifier[3]) {
+        switch (sTypeId[3]) {
               case 16:
                 patchValue[3] = mapfloat(ypr[2], dmpMaxInValue[3], dmpMinInValue[3], minOutValue[3], maxOutValue[3]);
                 break;
@@ -6842,7 +6667,7 @@ void processDigitalSensors(){
                 break;
         }
         patchValue[3] = constrain(patchValue[3], minOutValue[3], maxOutValue[3]);
-        switch (commandIdentifier[3]) {
+        switch (commandId[3]) {
               case 1: 
                 if(isMidiOut1[3] == true) {
                   // send command via MIDI Out 1
@@ -6948,7 +6773,7 @@ void processDigitalSensors(){
     }
     if(mute[4] == false) {
       if(isDmp[4] == true) {
-        switch (sensorTypeIdentifier[4]) {
+        switch (sTypeId[4]) {
               case 16:
                 patchValue[4] = mapfloat(ypr[2], dmpMaxInValue[4], dmpMinInValue[4], minOutValue[4], maxOutValue[4]);
                 break;
@@ -6969,7 +6794,7 @@ void processDigitalSensors(){
                 break;
         }
         patchValue[4] = constrain(patchValue[4], minOutValue[4], maxOutValue[4]);
-        switch (commandIdentifier[4]) {
+        switch (commandId[4]) {
               case 1: 
                 if(isMidiOut1[4] == true) {
                   // send command via MIDI Out 1
@@ -7075,7 +6900,7 @@ void processDigitalSensors(){
     }
     if(mute[5] == false) {
       if(isDmp[5] == true) {
-        switch (sensorTypeIdentifier[5]) {
+        switch (sTypeId[5]) {
               case 16:
                 patchValue[5] = mapfloat(ypr[2], dmpMaxInValue[5], dmpMinInValue[5], minOutValue[5], maxOutValue[5]);
                 break;
@@ -7096,7 +6921,7 @@ void processDigitalSensors(){
                 break;
         }
         patchValue[5] = constrain(patchValue[5], minOutValue[5], maxOutValue[5]);
-        switch (commandIdentifier[5]) {
+        switch (commandId[5]) {
               case 1: 
                 if(isMidiOut1[5] == true) {
                   // send command via MIDI Out 1
@@ -7202,7 +7027,7 @@ void processDigitalSensors(){
     }
     if(mute[6] == false) {
       if(isDmp[6] == true) {
-        switch (sensorTypeIdentifier[6]) {
+        switch (sTypeId[6]) {
               case 16:
                 patchValue[6] = mapfloat(ypr[2], dmpMaxInValue[6], dmpMinInValue[6], minOutValue[6], maxOutValue[6]);
                 break;
@@ -7223,7 +7048,7 @@ void processDigitalSensors(){
                 break;
         }
         patchValue[6] = constrain(patchValue[6], minOutValue[6], maxOutValue[6]);
-        switch (commandIdentifier[6]) {
+        switch (commandId[6]) {
               case 1: 
                 if(isMidiOut1[6] == true) {
                   // send command via MIDI Out 1
@@ -7329,7 +7154,7 @@ void processDigitalSensors(){
     }
     if(mute[7] == false) {
       if(isDmp[7] == true) {
-        switch (sensorTypeIdentifier[7]) {
+        switch (sTypeId[7]) {
               case 16:
                 patchValue[7] = mapfloat(ypr[2], dmpMaxInValue[7], dmpMinInValue[7], minOutValue[7], maxOutValue[7]);
                 break;
@@ -7350,7 +7175,7 @@ void processDigitalSensors(){
                 break;
         }
         patchValue[7] = constrain(patchValue[7], minOutValue[7], maxOutValue[7]);
-        switch (commandIdentifier[7]) {
+        switch (commandId[7]) {
               case 1: 
                 if(isMidiOut1[7] == true) {
                   // send command via MIDI Out 1
@@ -7456,7 +7281,7 @@ void processDigitalSensors(){
     }
     if(mute[8] == false) {
       if(isDmp[8] == true) {
-        switch (sensorTypeIdentifier[8]) {
+        switch (sTypeId[8]) {
               case 16:
                 patchValue[8] = mapfloat(ypr[2], dmpMaxInValue[8], dmpMinInValue[8], minOutValue[8], maxOutValue[8]);
                 break;
@@ -7477,7 +7302,7 @@ void processDigitalSensors(){
                 break;
         }
         patchValue[8] = constrain(patchValue[8], minOutValue[8], maxOutValue[8]);
-        switch (commandIdentifier[8]) {
+        switch (commandId[8]) {
               case 1: 
                 if(isMidiOut1[8] == true) {
                   // send command via MIDI Out 1
@@ -7583,7 +7408,7 @@ void processDigitalSensors(){
     }
     if(mute[9] == false) {
       if(isDmp[9] == true) {
-        switch (sensorTypeIdentifier[9]) {
+        switch (sTypeId[9]) {
               case 16:
                 patchValue[9] = mapfloat(ypr[2], dmpMaxInValue[9], dmpMinInValue[9], minOutValue[9], maxOutValue[9]);
                 break;
@@ -7604,7 +7429,7 @@ void processDigitalSensors(){
                 break;
         }
         patchValue[9] = constrain(patchValue[9], minOutValue[9], maxOutValue[9]);
-        switch (commandIdentifier[9]) {
+        switch (commandId[9]) {
               case 1: 
                 if(isMidiOut1[9] == true) {
                   // send command via MIDI Out 1
@@ -7727,9 +7552,9 @@ void processAnalogSensors (){
   // Convert Analog In Values to output compatible ones and send them 
   if(mute[0] == false) {
     if(isDmp[0] == false) {
-      patchValue[0] = map(analogPinValue[sensorTypeIdentifier[0]], minInValue[0], maxInValue[0], minOutValue[0], maxOutValue[0]);
+      patchValue[0] = map(analogPinValue[sTypeId[0]], minInValue[0], maxInValue[0], minOutValue[0], maxOutValue[0]);
       patchValue[0] = constrain(patchValue[0], minOutValue[0], maxOutValue[0]);
-      switch (commandIdentifier[0]) {
+      switch (commandId[0]) {
             case 1: 
               if(isMidiOut1[0] == true) {
                 // send command via MIDI Out 1
@@ -7835,9 +7660,9 @@ void processAnalogSensors (){
   }
   if(mute[1] == false) {
     if(isDmp[1] == false) {
-      patchValue[1] = map(analogPinValue[sensorTypeIdentifier[1]], minInValue[1], maxInValue[1], minOutValue[1], maxOutValue[1]);
+      patchValue[1] = map(analogPinValue[sTypeId[1]], minInValue[1], maxInValue[1], minOutValue[1], maxOutValue[1]);
       patchValue[1] = constrain(patchValue[1], minOutValue[1], maxOutValue[1]);
-      switch (commandIdentifier[1]) {
+      switch (commandId[1]) {
             case 1: 
               if(isMidiOut1[1] == true) {
                 // send command via MIDI Out 1
@@ -7943,9 +7768,9 @@ void processAnalogSensors (){
   }
   if(mute[2] == false) {
     if(isDmp[2] == false) {
-      patchValue[2] = map(analogPinValue[sensorTypeIdentifier[2]], minInValue[2], maxInValue[2], minOutValue[2], maxOutValue[2]);
+      patchValue[2] = map(analogPinValue[sTypeId[2]], minInValue[2], maxInValue[2], minOutValue[2], maxOutValue[2]);
       patchValue[2] = constrain(patchValue[2], minOutValue[2], maxOutValue[2]);
-      switch (commandIdentifier[2]) {
+      switch (commandId[2]) {
             case 1: 
               if(isMidiOut1[2] == true) {
                 // send command via MIDI Out 1
@@ -8051,9 +7876,9 @@ void processAnalogSensors (){
   }
   if(mute[3] == false) {
     if(isDmp[3] == false) {
-      patchValue[3] = map(analogPinValue[sensorTypeIdentifier[3]], minInValue[3], maxInValue[3], minOutValue[3], maxOutValue[3]);
+      patchValue[3] = map(analogPinValue[sTypeId[3]], minInValue[3], maxInValue[3], minOutValue[3], maxOutValue[3]);
       patchValue[3] = constrain(patchValue[3], minOutValue[3], maxOutValue[3]);
-      switch (commandIdentifier[3]) {
+      switch (commandId[3]) {
             case 1: 
               if(isMidiOut1[3] == true) {
                 // send command via MIDI Out 1
@@ -8159,9 +7984,9 @@ void processAnalogSensors (){
   }
   if(mute[4] == false) {
     if(isDmp[4] == false) {
-      patchValue[4] = map(analogPinValue[sensorTypeIdentifier[4]], minInValue[4], maxInValue[4], minOutValue[4], maxOutValue[4]);
+      patchValue[4] = map(analogPinValue[sTypeId[4]], minInValue[4], maxInValue[4], minOutValue[4], maxOutValue[4]);
       patchValue[4] = constrain(patchValue[4], minOutValue[4], maxOutValue[4]);
-      switch (commandIdentifier[4]) {
+      switch (commandId[4]) {
             case 1: 
               if(isMidiOut1[4] == true) {
                 // send command via MIDI Out 1
@@ -8267,9 +8092,9 @@ void processAnalogSensors (){
   }
   if(mute[5] == false) {
     if(isDmp[5] == false) {
-      patchValue[5] = map(analogPinValue[sensorTypeIdentifier[5]], minInValue[5], maxInValue[5], minOutValue[5], maxOutValue[5]);
+      patchValue[5] = map(analogPinValue[sTypeId[5]], minInValue[5], maxInValue[5], minOutValue[5], maxOutValue[5]);
       patchValue[5] = constrain(patchValue[5], minOutValue[5], maxOutValue[5]);
-      switch (commandIdentifier[5]) {
+      switch (commandId[5]) {
             case 1: 
               if(isMidiOut1[5] == true) {
                 // send command via MIDI Out 1
@@ -8375,9 +8200,9 @@ void processAnalogSensors (){
   }
   if(mute[6] == false) {
     if(isDmp[6] == false) {
-      patchValue[6] = map(analogPinValue[sensorTypeIdentifier[6]], minInValue[6], maxInValue[6], minOutValue[6], maxOutValue[6]);
+      patchValue[6] = map(analogPinValue[sTypeId[6]], minInValue[6], maxInValue[6], minOutValue[6], maxOutValue[6]);
       patchValue[6] = constrain(patchValue[6], minOutValue[6], maxOutValue[6]);
-      switch (commandIdentifier[6]) {
+      switch (commandId[6]) {
             case 1: 
               if(isMidiOut1[6] == true) {
                 // send command via MIDI Out 1
@@ -8483,9 +8308,9 @@ void processAnalogSensors (){
   }
   if(mute[7] == false) {
     if(isDmp[7] == false) {
-      patchValue[7] = map(analogPinValue[sensorTypeIdentifier[7]], minInValue[7], maxInValue[7], minOutValue[7], maxOutValue[7]);
+      patchValue[7] = map(analogPinValue[sTypeId[7]], minInValue[7], maxInValue[7], minOutValue[7], maxOutValue[7]);
       patchValue[7] = constrain(patchValue[7], minOutValue[7], maxOutValue[7]);
-      switch (commandIdentifier[7]) {
+      switch (commandId[7]) {
             case 1: 
               if(isMidiOut1[7] == true) {
                 // send command via MIDI Out 1
@@ -8591,9 +8416,9 @@ void processAnalogSensors (){
   }
   if(mute[8] == false) {
     if(isDmp[8] == false) {
-      patchValue[8] = map(analogPinValue[sensorTypeIdentifier[8]], minInValue[8], maxInValue[8], minOutValue[8], maxOutValue[8]);
+      patchValue[8] = map(analogPinValue[sTypeId[8]], minInValue[8], maxInValue[8], minOutValue[8], maxOutValue[8]);
       patchValue[8] = constrain(patchValue[8], minOutValue[8], maxOutValue[8]);
-      switch (commandIdentifier[8]) {
+      switch (commandId[8]) {
             case 1: 
               if(isMidiOut1[8] == true) {
                 // send command via MIDI Out 1
@@ -8699,9 +8524,9 @@ void processAnalogSensors (){
   }
   if(mute[9] == false) {
     if(isDmp[9] == false) {
-      patchValue[9] = map(analogPinValue[sensorTypeIdentifier[9]], minInValue[9], maxInValue[9], minOutValue[9], maxOutValue[9]);
+      patchValue[9] = map(analogPinValue[sTypeId[9]], minInValue[9], maxInValue[9], minOutValue[9], maxOutValue[9]);
       patchValue[9] = constrain(patchValue[9], minOutValue[9], maxOutValue[9]);
-      switch (commandIdentifier[9]) {
+      switch (commandId[9]) {
             case 1: 
               if(isMidiOut1[9] == true) {
                 // send command via MIDI Out 1
@@ -8815,7 +8640,7 @@ void drawLiveValuesA () {
   
   tft.drawFastVLine(locator, 56, 128, BLACK);
   
-  switch (commandIdentifier[0]) {
+  switch (commandId[0]) {
     case 1:
       tft.drawPixel(locator, 183 - patchValue[0], COLOR1);
       break;
@@ -8867,7 +8692,7 @@ void drawLiveValuesA () {
       tft.drawPixel(locator, 183 - iBuff, COLOR1);
       break;
   }
-  switch (commandIdentifier[1]) {
+  switch (commandId[1]) {
     case 1:
       tft.drawPixel(locator, 183 - patchValue[1], COLOR2);
       break;
@@ -8919,7 +8744,7 @@ void drawLiveValuesA () {
       tft.drawPixel(locator, 183 - iBuff, COLOR2);
       break;
   }
-  switch (commandIdentifier[2]) {
+  switch (commandId[2]) {
     case 1:
       tft.drawPixel(locator, 183 - patchValue[2], COLOR3);
       break;
@@ -8971,7 +8796,7 @@ void drawLiveValuesA () {
       tft.drawPixel(locator, 183 - iBuff, COLOR3);
       break;
   }
-  switch (commandIdentifier[3]) {
+  switch (commandId[3]) {
     case 1:
       tft.drawPixel(locator, 183 - patchValue[3], COLOR4);
       break;
@@ -9023,7 +8848,7 @@ void drawLiveValuesA () {
       tft.drawPixel(locator, 183 - iBuff, COLOR4);
       break;
   }
-  switch (commandIdentifier[4]) {
+  switch (commandId[4]) {
     case 1:
       tft.drawPixel(locator, 183 - patchValue[4], COLOR5);
       break;
@@ -9078,7 +8903,7 @@ void drawLiveValuesA () {
   
   tft.drawFastVLine(locator, 188, 128, BLACK);
   
-  switch (commandIdentifier[5]) {
+  switch (commandId[5]) {
     case 1:
       tft.drawPixel(locator, 315 - patchValue[5], COLOR6);
       break;
@@ -9130,7 +8955,7 @@ void drawLiveValuesA () {
       tft.drawPixel(locator, 315 - iBuff, COLOR6);
       break;
   }
-  switch (commandIdentifier[6]) {
+  switch (commandId[6]) {
     case 1:
       tft.drawPixel(locator, 315 - patchValue[6], COLOR7);
       break;
@@ -9182,7 +9007,7 @@ void drawLiveValuesA () {
       tft.drawPixel(locator, 315 - iBuff, COLOR7);
       break;
   }
-  switch (commandIdentifier[7]) {
+  switch (commandId[7]) {
     case 1:
       tft.drawPixel(locator, 315 - patchValue[7], COLOR8);
       break;
@@ -9234,7 +9059,7 @@ void drawLiveValuesA () {
       tft.drawPixel(locator, 315 - iBuff, COLOR8);
       break;
   }
-  switch (commandIdentifier[8]) {
+  switch (commandId[8]) {
     case 1:
       tft.drawPixel(locator, 315 - patchValue[8], COLOR9);
       break;
@@ -9286,7 +9111,7 @@ void drawLiveValuesA () {
       tft.drawPixel(locator, 315 - iBuff, COLOR9);
       break;
   }
-  switch (commandIdentifier[9]) {
+  switch (commandId[9]) {
     case 1:
       tft.drawPixel(locator, 315 - patchValue[9], COLOR0);
       break;
@@ -9345,7 +9170,7 @@ void drawLiveValuesB (){
   
   tft.drawFastVLine(locator, 30, 128, BLACK);
   
-  switch (commandIdentifier[0]) {
+  switch (commandId[0]) {
     case 1:
       tft.drawPixel(locator, 157 - patchValue[0], COLOR1);
       break;
@@ -9397,7 +9222,7 @@ void drawLiveValuesB (){
       tft.drawPixel(locator, 157 - iBuff, COLOR1);
       break;
   }
-  switch (commandIdentifier[1]) {
+  switch (commandId[1]) {
     case 1:
       tft.drawPixel(locator, 157 - patchValue[1], COLOR2);
       break;
@@ -9449,7 +9274,7 @@ void drawLiveValuesB (){
       tft.drawPixel(locator, 157 - iBuff, COLOR2);
       break;
   }
-  switch (commandIdentifier[2]) {
+  switch (commandId[2]) {
     case 1:
       tft.drawPixel(locator, 157 - patchValue[2], COLOR3);
       break;
@@ -9501,7 +9326,7 @@ void drawLiveValuesB (){
       tft.drawPixel(locator, 157 - iBuff, COLOR3);
       break;
   }
-  switch (commandIdentifier[3]) {
+  switch (commandId[3]) {
     case 1:
       tft.drawPixel(locator, 157 - patchValue[3], COLOR4);
       break;
@@ -9553,7 +9378,7 @@ void drawLiveValuesB (){
       tft.drawPixel(locator, 157 - iBuff, COLOR4);
       break;
   }
-  switch (commandIdentifier[4]) {
+  switch (commandId[4]) {
     case 1:
       tft.drawPixel(locator, 157 - patchValue[4], COLOR5);
       break;
@@ -9608,7 +9433,7 @@ void drawLiveValuesB (){
   
   tft.drawFastVLine(locator, 188, 128, BLACK);
   
-  switch (commandIdentifier[5]) {
+  switch (commandId[5]) {
     case 1:
       tft.drawPixel(locator, 315 - patchValue[5], COLOR6);
       break;
@@ -9660,7 +9485,7 @@ void drawLiveValuesB (){
       tft.drawPixel(locator, 315 - iBuff, COLOR6);
       break;
   }
-  switch (commandIdentifier[6]) {
+  switch (commandId[6]) {
     case 1:
       tft.drawPixel(locator, 315 - patchValue[6], COLOR7);
       break;
@@ -9712,7 +9537,7 @@ void drawLiveValuesB (){
       tft.drawPixel(locator, 315 - iBuff, COLOR7);
       break;
   }
-  switch (commandIdentifier[7]) {
+  switch (commandId[7]) {
     case 1:
       tft.drawPixel(locator, 315 - patchValue[7], COLOR8);
       break;
@@ -9764,7 +9589,7 @@ void drawLiveValuesB (){
       tft.drawPixel(locator, 315 - iBuff, COLOR8);
       break;
   }
-  switch (commandIdentifier[8]) {
+  switch (commandId[8]) {
     case 1:
       tft.drawPixel(locator, 315 - patchValue[8], COLOR9);
       break;
@@ -9816,7 +9641,7 @@ void drawLiveValuesB (){
       tft.drawPixel(locator, 315 - iBuff, COLOR9);
       break;
   }
-  switch (commandIdentifier[9]) {
+  switch (commandId[9]) {
     case 1:
       tft.drawPixel(locator, 315 - patchValue[9], COLOR0);
       break;
@@ -9875,7 +9700,7 @@ void drawLiveValuesC (){
   
   tft.drawFastVLine(locator, 30, 128, BLACK);
   
-  switch (commandIdentifier[0]) {
+  switch (commandId[0]) {
     case 1:
       tft.drawPixel(locator, 157 - patchValue[0], COLOR1);
       break;
@@ -9927,7 +9752,7 @@ void drawLiveValuesC (){
       tft.drawPixel(locator, 157 - iBuff, COLOR1);
       break;
   }
-  switch (commandIdentifier[1]) {
+  switch (commandId[1]) {
     case 1:
       tft.drawPixel(locator, 157 - patchValue[1], COLOR2);
       break;
@@ -9979,7 +9804,7 @@ void drawLiveValuesC (){
       tft.drawPixel(locator, 157 - iBuff, COLOR2);
       break;
   }
-  switch (commandIdentifier[2]) {
+  switch (commandId[2]) {
     case 1:
       tft.drawPixel(locator, 157 - patchValue[2], COLOR3);
       break;
@@ -10031,7 +9856,7 @@ void drawLiveValuesC (){
       tft.drawPixel(locator, 157 - iBuff, COLOR3);
       break;
   }
-  switch (commandIdentifier[3]) {
+  switch (commandId[3]) {
     case 1:
       tft.drawPixel(locator, 157 - patchValue[3], COLOR4);
       break;
@@ -10083,7 +9908,7 @@ void drawLiveValuesC (){
       tft.drawPixel(locator, 157 - iBuff, COLOR4);
       break;
   }
-  switch (commandIdentifier[4]) {
+  switch (commandId[4]) {
     case 1:
       tft.drawPixel(locator, 157 - patchValue[4], COLOR5);
       break;
@@ -10138,7 +9963,7 @@ void drawLiveValuesC (){
   
   tft.drawFastVLine(locator2, 30, 128, BLACK);
   
-  switch (commandIdentifier[5]) {
+  switch (commandId[5]) {
     case 1:
       tft.drawPixel(locator2, 157 - patchValue[5], COLOR6);
       break;
@@ -10190,7 +10015,7 @@ void drawLiveValuesC (){
       tft.drawPixel(locator2, 157 - iBuff, COLOR6);
       break;
   }
-  switch (commandIdentifier[6]) {
+  switch (commandId[6]) {
     case 1:
       tft.drawPixel(locator2, 157 - patchValue[6], COLOR7);
       break;
@@ -10242,7 +10067,7 @@ void drawLiveValuesC (){
       tft.drawPixel(locator2, 157 - iBuff, COLOR7);
       break;
   }
-  switch (commandIdentifier[7]) {
+  switch (commandId[7]) {
     case 1:
       tft.drawPixel(locator2, 157 - patchValue[7], COLOR8);
       break;
@@ -10294,7 +10119,7 @@ void drawLiveValuesC (){
       tft.drawPixel(locator2, 157 - iBuff, COLOR8);
       break;
   }
-  switch (commandIdentifier[8]) {
+  switch (commandId[8]) {
     case 1:
       tft.drawPixel(locator2, 157 - patchValue[8], COLOR9);
       break;
@@ -10346,7 +10171,7 @@ void drawLiveValuesC (){
       tft.drawPixel(locator2, 157 - iBuff, COLOR9);
       break;
   }
-  switch (commandIdentifier[9]) {
+  switch (commandId[9]) {
     case 1:
       tft.drawPixel(locator2, 157 - patchValue[9], COLOR0);
       break;
@@ -10524,43 +10349,43 @@ void buildLiveModeA(){
   tft.setCursor(4, 8);
   tft.print(patchNames[0]);
   tft.setCursor(4, 19);
-  tft.print(sensorTypes[sensorTypeIdentifier[0]]); 
+  tft.print(sensorTypes[sTypeId[0]]); 
   tft.setCursor(52, 8);
   tft.print(patchNames[1]);
   tft.setCursor(52, 19);
-  tft.print(sensorTypes[sensorTypeIdentifier[1]]); 
+  tft.print(sensorTypes[sTypeId[1]]); 
   tft.setCursor(100, 8);
   tft.print(patchNames[2]);
   tft.setCursor(100, 19);
-  tft.print(sensorTypes[sensorTypeIdentifier[2]]); 
+  tft.print(sensorTypes[sTypeId[2]]); 
   tft.setCursor(148, 8); 
   tft.print(patchNames[3]);
   tft.setCursor(148, 19);
-  tft.print(sensorTypes[sensorTypeIdentifier[3]]); 
+  tft.print(sensorTypes[sTypeId[3]]); 
   tft.setCursor(196, 8); 
   tft.print(patchNames[4]);
   tft.setCursor(196, 19);
-  tft.print(sensorTypes[sensorTypeIdentifier[4]]); 
+  tft.print(sensorTypes[sTypeId[4]]); 
   tft.setCursor(244, 8); 
   tft.print(patchNames[5]);
   tft.setCursor(244, 19);
-  tft.print(sensorTypes[sensorTypeIdentifier[5]]); 
+  tft.print(sensorTypes[sTypeId[5]]); 
   tft.setCursor(292, 8); 
   tft.print(patchNames[6]);
   tft.setCursor(292, 19);
-  tft.print(sensorTypes[sensorTypeIdentifier[6]]); 
+  tft.print(sensorTypes[sTypeId[6]]); 
   tft.setCursor(340, 8); 
   tft.print(patchNames[7]);
   tft.setCursor(340, 19);
-  tft.print(sensorTypes[sensorTypeIdentifier[7]]); 
+  tft.print(sensorTypes[sTypeId[7]]); 
   tft.setCursor(388, 8); 
   tft.print(patchNames[8]); 
   tft.setCursor(388, 19);
-  tft.print(sensorTypes[sensorTypeIdentifier[8]]);
+  tft.print(sensorTypes[sTypeId[8]]);
   tft.setCursor(436, 8); 
   tft.print(patchNames[9]);
   tft.setCursor(436, 19);
-  tft.print(sensorTypes[sensorTypeIdentifier[9]]); 
+  tft.print(sensorTypes[sTypeId[9]]); 
 }
 
 //====================================================================================
@@ -10696,35 +10521,35 @@ void buildLiveModeB(){
   // print linked sensors
   tft.setTextSize(1);
   tft.setCursor(6, 24);
-  tft.print(sensorTypes[sensorTypeIdentifier[0]]); 
+  tft.print(sensorTypes[sTypeId[0]]); 
   tft.setCursor(6, 88);
-  tft.print(sensorTypes[sensorTypeIdentifier[1]]); 
+  tft.print(sensorTypes[sTypeId[1]]); 
   tft.setCursor(6, 152);
-  tft.print(sensorTypes[sensorTypeIdentifier[2]]); 
+  tft.print(sensorTypes[sTypeId[2]]); 
   tft.setCursor(6, 216);
-  tft.print(sensorTypes[sensorTypeIdentifier[3]]); 
+  tft.print(sensorTypes[sTypeId[3]]); 
   tft.setCursor(6, 280);
-  tft.print(sensorTypes[sensorTypeIdentifier[4]]); 
+  tft.print(sensorTypes[sTypeId[4]]); 
   tft.setCursor(389, 24);
-  tft.print(sensorTypes[sensorTypeIdentifier[5]]); 
+  tft.print(sensorTypes[sTypeId[5]]); 
   tft.setCursor(389, 88);
-  tft.print(sensorTypes[sensorTypeIdentifier[6]]); 
+  tft.print(sensorTypes[sTypeId[6]]); 
   tft.setCursor(389, 152);
-  tft.print(sensorTypes[sensorTypeIdentifier[7]]); 
+  tft.print(sensorTypes[sTypeId[7]]); 
   tft.setCursor(389, 216);
-  tft.print(sensorTypes[sensorTypeIdentifier[8]]); 
+  tft.print(sensorTypes[sTypeId[8]]); 
   tft.setCursor(389, 280);
-  tft.print(sensorTypes[sensorTypeIdentifier[9]]); 
+  tft.print(sensorTypes[sTypeId[9]]); 
   
   // print output configuration
   tft.setCursor(6, 34);
   tft.print("CH");
   tft.print(midiChan[0]); 
-  if (commandIdentifier[0] == 1) {
+  if (commandId[0] == 1) {
     tft.print(" CC");
     tft.print(ctrlrNrA[0]);
   }
-  else if (commandIdentifier[0] > 1) {
+  else if (commandId[0] > 1) {
     tft.print(" M");
     tft.print(ctrlrNrA[0]);
     tft.print(" L");
@@ -10733,11 +10558,11 @@ void buildLiveModeB(){
   tft.setCursor(6, 98);
   tft.print("CH");
   tft.print(midiChan[1]);
-  if (commandIdentifier[1] == 1) {
+  if (commandId[1] == 1) {
     tft.print(" CC");
     tft.print(ctrlrNrA[1]);
   }
-  else if (commandIdentifier[1] > 1) {
+  else if (commandId[1] > 1) {
     tft.print(" M");
     tft.print(ctrlrNrA[1]);
     tft.print(" L");
@@ -10746,11 +10571,11 @@ void buildLiveModeB(){
   tft.setCursor(6, 162);
   tft.print("CH");
   tft.print(midiChan[2]);
-  if (commandIdentifier[2] == 1) {
+  if (commandId[2] == 1) {
     tft.print(" CC");
     tft.print(ctrlrNrA[2]);
   }
-  else if (commandIdentifier[2] > 1) {
+  else if (commandId[2] > 1) {
     tft.print(" M");
     tft.print(ctrlrNrA[2]);
     tft.print(" L");
@@ -10759,11 +10584,11 @@ void buildLiveModeB(){
   tft.setCursor(6, 226);
   tft.print("CH");
   tft.print(midiChan[3]);
-  if (commandIdentifier[3] == 1) {
+  if (commandId[3] == 1) {
     tft.print(" CC");
     tft.print(ctrlrNrA[3]);
   }
-  else if (commandIdentifier[3] > 1) {
+  else if (commandId[3] > 1) {
     tft.print(" M");
     tft.print(ctrlrNrA[3]);
     tft.print(" L");
@@ -10772,11 +10597,11 @@ void buildLiveModeB(){
   tft.setCursor(6, 290);
   tft.print("CH");
   tft.print(midiChan[4]);
-  if (commandIdentifier[4] == 1) {
+  if (commandId[4] == 1) {
     tft.print(" CC");
     tft.print(ctrlrNrA[4]);
   }
-  else if (commandIdentifier[4] > 1) {
+  else if (commandId[4] > 1) {
     tft.print(" M");
     tft.print(ctrlrNrA[4]);
     tft.print(" L");
@@ -10785,11 +10610,11 @@ void buildLiveModeB(){
   tft.setCursor(389, 34);
   tft.print("CH");
   tft.print(midiChan[5]);
-  if (commandIdentifier[5] == 1) {
+  if (commandId[5] == 1) {
     tft.print(" CC");
     tft.print(ctrlrNrA[5]);
   }
-  else if (commandIdentifier[5] > 1) {
+  else if (commandId[5] > 1) {
     tft.print(" M");
     tft.print(ctrlrNrA[5]);
     tft.print(" L");
@@ -10798,11 +10623,11 @@ void buildLiveModeB(){
   tft.setCursor(389, 98);
   tft.print("CH");
   tft.print(midiChan[6]);
-  if (commandIdentifier[6] == 1) {
+  if (commandId[6] == 1) {
     tft.print(" CC");
     tft.print(ctrlrNrA[6]);
   }
-  else if (commandIdentifier[6] > 1) {
+  else if (commandId[6] > 1) {
     tft.print(" M");
     tft.print(ctrlrNrA[6]);
     tft.print(" L");
@@ -10811,11 +10636,11 @@ void buildLiveModeB(){
   tft.setCursor(389, 162);
   tft.print("CH");
   tft.print(midiChan[7]);
-  if (commandIdentifier[7] == 1) {
+  if (commandId[7] == 1) {
     tft.print(" CC");
     tft.print(ctrlrNrA[7]);
   }
-  else if (commandIdentifier[7] > 1) {
+  else if (commandId[7] > 1) {
     tft.print(" M");
     tft.print(ctrlrNrA[7]);
     tft.print(" L");
@@ -10824,11 +10649,11 @@ void buildLiveModeB(){
   tft.setCursor(389, 226);
   tft.print("CH");
   tft.print(midiChan[8]);
-  if (commandIdentifier[8] == 1) {
+  if (commandId[8] == 1) {
     tft.print(" CC");
     tft.print(ctrlrNrA[8]);
   }
-  else if (commandIdentifier[8] > 1) {
+  else if (commandId[8] > 1) {
     tft.print(" M");
     tft.print(ctrlrNrA[8]);
     tft.print(" L");
@@ -10837,11 +10662,11 @@ void buildLiveModeB(){
   tft.setCursor(389, 290);
   tft.print("CH");
   tft.print(midiChan[9]);
-  if (commandIdentifier[9] == 1) {
+  if (commandId[9] == 1) {
     tft.print(" CC");
     tft.print(ctrlrNrA[9]);
   }
-  else if (commandIdentifier[9] > 1) {
+  else if (commandId[9] > 1) {
     tft.print(" M");
     tft.print(ctrlrNrA[9]);
     tft.print(" L");
@@ -11027,43 +10852,43 @@ void buildLiveModeC(){
   tft.setCursor(4, 228);
   tft.print(patchNames[0]);
   tft.setCursor(4, 239);
-  tft.print(sensorTypes[sensorTypeIdentifier[0]]); 
+  tft.print(sensorTypes[sTypeId[0]]); 
   tft.setCursor(52, 228);
   tft.print(patchNames[1]);
   tft.setCursor(52, 239);
-  tft.print(sensorTypes[sensorTypeIdentifier[1]]); 
+  tft.print(sensorTypes[sTypeId[1]]); 
   tft.setCursor(100, 228);
   tft.print(patchNames[2]);
   tft.setCursor(100, 239);
-  tft.print(sensorTypes[sensorTypeIdentifier[2]]); 
+  tft.print(sensorTypes[sTypeId[2]]); 
   tft.setCursor(148, 228); 
   tft.print(patchNames[3]);
   tft.setCursor(148, 239);
-  tft.print(sensorTypes[sensorTypeIdentifier[3]]); 
+  tft.print(sensorTypes[sTypeId[3]]); 
   tft.setCursor(196, 228); 
   tft.print(patchNames[4]);
   tft.setCursor(196, 239);
-  tft.print(sensorTypes[sensorTypeIdentifier[4]]); 
+  tft.print(sensorTypes[sTypeId[4]]); 
   tft.setCursor(244, 228); 
   tft.print(patchNames[5]);
   tft.setCursor(244, 239);
-  tft.print(sensorTypes[sensorTypeIdentifier[5]]); 
+  tft.print(sensorTypes[sTypeId[5]]); 
   tft.setCursor(292, 228); 
   tft.print(patchNames[6]);
   tft.setCursor(292, 239);
-  tft.print(sensorTypes[sensorTypeIdentifier[6]]); 
+  tft.print(sensorTypes[sTypeId[6]]); 
   tft.setCursor(340, 228); 
   tft.print(patchNames[7]);
   tft.setCursor(340, 239);
-  tft.print(sensorTypes[sensorTypeIdentifier[7]]); 
+  tft.print(sensorTypes[sTypeId[7]]); 
   tft.setCursor(388, 228); 
   tft.print(patchNames[8]); 
   tft.setCursor(388, 239);
-  tft.print(sensorTypes[sensorTypeIdentifier[8]]);
+  tft.print(sensorTypes[sTypeId[8]]);
   tft.setCursor(436, 228); 
   tft.print(patchNames[9]);
   tft.setCursor(436, 239);
-  tft.print(sensorTypes[sensorTypeIdentifier[9]]); 
+  tft.print(sensorTypes[sTypeId[9]]); 
   
   tft.setTextColor(GRAY);
   tft.setTextSize(2);
@@ -11591,25 +11416,25 @@ void writeSDPreset() {
     myFile.print("A9;");
     myFile.println(patchNames[9]);
     myFile.print("B0;");
-    myFile.println(sensorTypeIdentifier[0]);
+    myFile.println(sTypeId[0]);
     myFile.print("B1;");
-    myFile.println(sensorTypeIdentifier[1]);
+    myFile.println(sTypeId[1]);
     myFile.print("B2;");
-    myFile.println(sensorTypeIdentifier[2]);
+    myFile.println(sTypeId[2]);
     myFile.print("B3;");
-    myFile.println(sensorTypeIdentifier[3]);
+    myFile.println(sTypeId[3]);
     myFile.print("B4;");
-    myFile.println(sensorTypeIdentifier[4]);
+    myFile.println(sTypeId[4]);
     myFile.print("B5;");
-    myFile.println(sensorTypeIdentifier[5]);
+    myFile.println(sTypeId[5]);
     myFile.print("B6;");
-    myFile.println(sensorTypeIdentifier[6]);
+    myFile.println(sTypeId[6]);
     myFile.print("B7;");
-    myFile.println(sensorTypeIdentifier[7]);
+    myFile.println(sTypeId[7]);
     myFile.print("B8;");
-    myFile.println(sensorTypeIdentifier[8]);
+    myFile.println(sTypeId[8]);
     myFile.print("B9;");
-    myFile.println(sensorTypeIdentifier[9]);
+    myFile.println(sTypeId[9]);
     myFile.print("C0;");
     myFile.println(isDmp[0]);
     myFile.print("C1;");
@@ -11691,25 +11516,25 @@ void writeSDPreset() {
     myFile.print("F9;");
     myFile.println(isMidiOut3[9]);
     myFile.print("G0;");
-    myFile.println(commandIdentifier[0]);
+    myFile.println(commandId[0]);
     myFile.print("G1;");
-    myFile.println(commandIdentifier[1]);
+    myFile.println(commandId[1]);
     myFile.print("G2;");
-    myFile.println(commandIdentifier[2]);
+    myFile.println(commandId[2]);
     myFile.print("G3;");
-    myFile.println(commandIdentifier[3]);
+    myFile.println(commandId[3]);
     myFile.print("G4;");
-    myFile.println(commandIdentifier[4]);
+    myFile.println(commandId[4]);
     myFile.print("G5;");
-    myFile.println(commandIdentifier[5]);
+    myFile.println(commandId[5]);
     myFile.print("G6;");
-    myFile.println(commandIdentifier[6]);
+    myFile.println(commandId[6]);
     myFile.print("G7;");
-    myFile.println(commandIdentifier[7]);
+    myFile.println(commandId[7]);
     myFile.print("G8;");
-    myFile.println(commandIdentifier[8]);
+    myFile.println(commandId[8]);
     myFile.print("G9;");
-    myFile.println(commandIdentifier[9]);
+    myFile.println(commandId[9]);
     myFile.print("H0;");
     myFile.println(midiChan[0]);
     myFile.print("H1;");
@@ -12185,34 +12010,34 @@ void applyPreset(String settingName, String settingValue) {
     settingValue.toCharArray(patchNames[9], 8);
   }
   else if(settingName == "B0") {
-    sensorTypeIdentifier[0]=settingValue.toInt();
+    sTypeId[0]=settingValue.toInt();
   }
   else if(settingName == "B1") {
-    sensorTypeIdentifier[1]=settingValue.toInt();
+    sTypeId[1]=settingValue.toInt();
   }
   else if(settingName == "B2") {
-    sensorTypeIdentifier[2]=settingValue.toInt();
+    sTypeId[2]=settingValue.toInt();
   }
   else if(settingName == "B3") {
-    sensorTypeIdentifier[3]=settingValue.toInt();
+    sTypeId[3]=settingValue.toInt();
   }
   else if(settingName == "B4") {
-    sensorTypeIdentifier[4]=settingValue.toInt();
+    sTypeId[4]=settingValue.toInt();
   }
   else if(settingName == "B5") {
-    sensorTypeIdentifier[5]=settingValue.toInt();
+    sTypeId[5]=settingValue.toInt();
   }
   else if(settingName == "B6") {
-    sensorTypeIdentifier[6]=settingValue.toInt();
+    sTypeId[6]=settingValue.toInt();
   }
   else if(settingName == "B7") {
-    sensorTypeIdentifier[7]=settingValue.toInt();
+    sTypeId[7]=settingValue.toInt();
   }
   else if(settingName == "B8") {
-    sensorTypeIdentifier[8]=settingValue.toInt();
+    sTypeId[8]=settingValue.toInt();
   }
   else if(settingName == "B9") {
-    sensorTypeIdentifier[9]=settingValue.toInt();
+    sTypeId[9]=settingValue.toInt();
   }
   else if(settingName == "C0") {
     isDmp[0]=toBoolean(settingValue);
@@ -12335,34 +12160,34 @@ void applyPreset(String settingName, String settingValue) {
     isMidiOut3[9]=toBoolean(settingValue);
   }
   else if(settingName == "G0") {
-    commandIdentifier[0]=settingValue.toInt();
+    commandId[0]=settingValue.toInt();
   }
   else if(settingName == "G1") {
-    commandIdentifier[1]=settingValue.toInt();
+    commandId[1]=settingValue.toInt();
   }
   else if(settingName == "G2") {
-    commandIdentifier[2]=settingValue.toInt();
+    commandId[2]=settingValue.toInt();
   }
   else if(settingName == "G3") {
-    commandIdentifier[3]=settingValue.toInt();
+    commandId[3]=settingValue.toInt();
   }
   else if(settingName == "G4") {
-    commandIdentifier[4]=settingValue.toInt();
+    commandId[4]=settingValue.toInt();
   }
   else if(settingName == "G5") {
-    commandIdentifier[5]=settingValue.toInt();
+    commandId[5]=settingValue.toInt();
   }
   else if(settingName == "G6") {
-    commandIdentifier[6]=settingValue.toInt();
+    commandId[6]=settingValue.toInt();
   }
   else if(settingName == "G7") {
-    commandIdentifier[7]=settingValue.toInt();
+    commandId[7]=settingValue.toInt();
   }
   else if(settingName == "G8") {
-    commandIdentifier[8]=settingValue.toInt();
+    commandId[8]=settingValue.toInt();
   }
   else if(settingName == "G9") {
-    commandIdentifier[9]=settingValue.toInt();
+    commandId[9]=settingValue.toInt();
   }
   else if(settingName == "H0") {
     midiChan[0]=settingValue.toInt();
